@@ -1,0 +1,11 @@
+{
+    "interface": {
+        "largeur": 900,
+        "hauteur": 620
+    },
+    "network": {
+        "host": "127.0.0.1",
+        "port": 8765,
+        "reconnect_delay_s": 2
+    }
+}
