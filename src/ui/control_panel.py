@@ -7,7 +7,9 @@ class ControlPanel(QGroupBox):
 
         self.status_label = QLabel("Connexion: en attente...")
         self.density_label = QLabel("Trafic: en attente...")
-        self.emergency_label = QLabel("Aucune urgence")
+        self.density_label.setWordWrap(True)
+        self.emergency_label = QLabel("Urgence: en attente...")
+        self.emergency_label.setWordWrap(True)
 
         layout = QVBoxLayout()
         layout.addWidget(self.status_label)
@@ -36,3 +38,20 @@ class ControlPanel(QGroupBox):
 
         layout.addStretch()
         self.setLayout(layout)
+
+    def set_density(self, density):
+        if not density:
+            self.density_label.setText("Trafic: en attente...")
+            return
+        text = "Véhicules :"
+        for voie in density:
+            text = text + " " + voie[0] + " " + str(density[voie])
+        self.density_label.setText(text)
+
+    def set_emergency(self, road):
+        if road:
+            self.emergency_label.setText("URGENCE ACTIVE: " + road)
+            self.emergency_label.setStyleSheet("color: red; font-weight: bold;")
+        else:
+            self.emergency_label.setText("Aucune urgence")
+            self.emergency_label.setStyleSheet("")
