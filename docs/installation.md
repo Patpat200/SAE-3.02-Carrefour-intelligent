@@ -1,13 +1,47 @@
-# Installation
+# Guide d'installation
 
-Python 3.11 ou supérieur et PyQt6 sont nécessaires.
+## Prérequis système
+- Python 3.11 ou supérieur
+- pip (inclus avec Python)
+- Git
 
-```powershell
-python -m venv venv
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
-.\venv\Scripts\python.exe main.py
+## Étapes
+
+### 1. Cloner le dépôt
+```bash
+git clone https://github.com/<votre-repo>/carrefour-connecte.git
+cd carrefour-connecte
 ```
 
-Dans `config/settings.json`, renseigner l'adresse IP et le port du serveur.
-Le serveur est développé et lancé séparément par le camarade.
-Sans serveur connecté, seul le carrefour vide est affiché au démarrage.
+### 2. Créer l'environnement virtuel
+```bash
+python -m venv venv
+```
+
+### 3. Activer l'environnement virtuel
+**Windows :**
+```bash
+venv\Scripts\activate
+```
+**Linux / macOS :**
+```bash
+source venv/bin/activate
+```
+
+### 4. Installer les dépendances
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Lancer le serveur puis le client
+```bash
+python server.py
+```
+
+Dans un second terminal :
+```bash
+python main.py
+```
+
+Docker n'est pas nécessaire pour cette version. Le dossier `logs` est créé
+automatiquement par le serveur.
