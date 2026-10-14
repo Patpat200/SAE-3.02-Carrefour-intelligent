@@ -2,10 +2,9 @@ from PyQt6.QtCore import QTimer, pyqtSignal
 from datetime import datetime
 from PyQt6.QtWidgets import QHBoxLayout, QMainWindow, QScrollArea, QWidget
 
-from network.client import NetworkClient
-
 from .carrefour_widget import CarrefourWidget
 from .control_panel import ControlPanel
+from ..network.client import NetworkClient
 
 
 class MainWindow(QMainWindow):
@@ -42,33 +41,31 @@ class MainWindow(QMainWindow):
         self.control_panel.set_strategie(None)
         self.control_panel.add_event("Interface ouverte")
 
-        # --- Connexion au serveur (adresse lue dans settings.json) ---
-        net = settings.get("network", {})
+        network = settings.get("network", {})
         self.client = NetworkClient(
-            net.get("host", "127.0.0.1"),
-            net.get("port", 5000),
-            net.get("reconnect_delay_s", 2),
+            network.get("host", "127.0.0.1"),
+            network.get("port", 5000),
+            network.get("reconnect_delay_s", 2),
         )
-        self.client.start()
-
-        # --- Commandes de l'interface -> serveur ---
+        self.last_network_error = ""
         self.command_requested.connect(self.envoyer_commande)
-
-        # --- Toutes les 30 ms : lire le dernier etat recu ---
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.refresh)
-        self.timer.start(30)
+        self.network_timer = QTimer(self)
+        self.network_timer.timeout.connect(self.refresh)
+        self.client.start()
+        self.network_timer.start(50)
 
     def envoyer_commande(self, action, params):
-        # Le serveur attend la voie dans le champ "road"
-        self.client.send_command(action, params.get("road"))
+        if not self.client.send_command(action, **params):
+            self.set_connection(False, self.client.last_error or "Commande non envoyée")
 
     def refresh(self):
         self.set_connection(self.client.connected, self.client.last_error)
-
         state = self.client.consume_latest_state()
         if state is not None:
             self.afficher_etat(state)
+        if self.client.last_error and self.client.last_error != self.last_network_error:
+            self.control_panel.add_event("Erreur réseau : " + self.client.last_error)
+        self.last_network_error = self.client.last_error
 
     def afficher_etat(self, state):
         self.carrefour_widget.set_state(state)
@@ -98,9 +95,12 @@ class MainWindow(QMainWindow):
         self.connected = connected
         self.control_panel.set_status(connected, error_message)
         if connected:
-            self.statusBar().showMessage("Connecté au serveur")
+            texte = "Connecté au serveur"
+            if error_message:
+                texte += " — " + error_message
+            self.statusBar().showMessage(texte)
         else:
-            self.statusBar().showMessage("Serveur non connecté - affichage non actualisé")
+            self.statusBar().showMessage(error_message or "Serveur non connecté - affichage non actualisé")
 
     def trigger_emergency(self, road):
         if self.connected:
@@ -113,17 +113,17 @@ class MainWindow(QMainWindow):
             self.command_requested.emit("clear_emergency", {})
 
     def set_rush_hour(self, actif):
-        if self.connected:
+        if self.connected and self.control_panel.trafic_available:
             self.control_panel.add_event("Demande d'heure de pointe : " + ("activer" if actif else "désactiver"))
             self.command_requested.emit("set_rush_hour", {"value": actif})
 
     def set_strategy(self, strategie):
-        if self.connected:
+        if self.connected and self.control_panel.strategie in ["fixe", "adaptatif"]:
             self.control_panel.add_event("Demande de stratégie : " + strategie)
             self.command_requested.emit("set_strategy", {"value": strategie})
 
     def closeEvent(self, event):
-        self.timer.stop()
-        self.carrefour_widget.repaint_timer.stop()
+        self.network_timer.stop()
         self.client.stop()
+        self.carrefour_widget.repaint_timer.stop()
         super().closeEvent(event)

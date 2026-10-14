@@ -4,7 +4,7 @@
         "hauteur": 620
     },
     "network": {
-        "host": "10.128.214.143",
+        "host": "10.128.238.241",
         "port": 5000,
         "reconnect_delay_s": 2
     }
