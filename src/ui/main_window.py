@@ -1,6 +1,8 @@
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QTimer, pyqtSignal
 from datetime import datetime
 from PyQt6.QtWidgets import QHBoxLayout, QMainWindow, QScrollArea, QWidget
+
+from network.client import NetworkClient
 
 from .carrefour_widget import CarrefourWidget
 from .control_panel import ControlPanel
@@ -39,6 +41,34 @@ class MainWindow(QMainWindow):
         self.set_connection(False)
         self.control_panel.set_strategie(None)
         self.control_panel.add_event("Interface ouverte")
+
+        # --- Connexion au serveur (adresse lue dans settings.json) ---
+        net = settings.get("network", {})
+        self.client = NetworkClient(
+            net.get("host", "127.0.0.1"),
+            net.get("port", 5000),
+            net.get("reconnect_delay_s", 2),
+        )
+        self.client.start()
+
+        # --- Commandes de l'interface -> serveur ---
+        self.command_requested.connect(self.envoyer_commande)
+
+        # --- Toutes les 30 ms : lire le dernier etat recu ---
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.refresh)
+        self.timer.start(30)
+
+    def envoyer_commande(self, action, params):
+        # Le serveur attend la voie dans le champ "road"
+        self.client.send_command(action, params.get("road"))
+
+    def refresh(self):
+        self.set_connection(self.client.connected, self.client.last_error)
+
+        state = self.client.consume_latest_state()
+        if state is not None:
+            self.afficher_etat(state)
 
     def afficher_etat(self, state):
         self.carrefour_widget.set_state(state)
@@ -93,5 +123,7 @@ class MainWindow(QMainWindow):
             self.command_requested.emit("set_strategy", {"value": strategie})
 
     def closeEvent(self, event):
+        self.timer.stop()
         self.carrefour_widget.repaint_timer.stop()
+        self.client.stop()
         super().closeEvent(event)
