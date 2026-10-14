@@ -23,6 +23,7 @@ class CarrefourWidget(QWidget):
             "densite": {},
         }
         self.setMinimumSize(500, 500)
+        self.decor_visible = True
 
         self.repaint_timer = QTimer(self)
         self.repaint_timer.timeout.connect(self.update)
@@ -34,17 +35,26 @@ class CarrefourWidget(QWidget):
         self.state = state
         self.update()
 
+    def set_decor_visible(self, visible):
+        self.decor_visible = visible
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
 
-        self.largeur = self.width()
-        self.hauteur = self.height()
+        painter.fillRect(self.rect(), QColor("#d8d2c4"))
+        taille = min(self.width(), self.height())
+        painter.translate((self.width() - taille) / 2, (self.height() - taille) / 2)
+        painter.scale(taille / 700, taille / 700)
+        self.largeur = 700
+        self.hauteur = 700
         self.centre_x = self.largeur // 2
         self.centre_y = self.hauteur // 2
 
-        self.dessiner_decor(painter)
+        if self.decor_visible:
+            self.dessiner_decor(painter)
         self.dessiner_routes(painter)
         self.dessiner_marquage(painter)
         self.dessiner_vehicules(painter)
@@ -55,7 +65,7 @@ class CarrefourWidget(QWidget):
         cx = self.centre_x
         cy = self.centre_y
 
-        painter.fillRect(self.rect(), QColor("#d8d2c4"))
+        painter.fillRect(0, 0, self.largeur, self.hauteur, QColor("#d8d2c4"))
 
         self.dessiner_batiment(painter, cx - 190, cy - 170, 100, 60, "#b5654a")
         self.dessiner_batiment(painter, cx - 300, cy - 150, 80, 70, "#8c8c8c")
@@ -162,9 +172,11 @@ class CarrefourWidget(QWidget):
             "PRIORITAIRE": QColor("#2f6bff"),
         }
 
-        for feu in self.state.get("feux", []):
+        etats = {feu["nom"]: feu["etat"] for feu in self.state.get("feux", [])}
+        for nom in positions_feux:
+            feu = {"nom": nom, "etat": etats.get(nom, "INCONNU")}
             pos_x, pos_y = positions_feux[feu["nom"]]
-            couleur = couleurs.get(feu["etat"], QColor("black"))
+            couleur = couleurs.get(feu["etat"], QColor("#777777"))
 
             painter.setBrush(QBrush(QColor("#1e1e1e")))
             painter.drawRoundedRect(pos_x - 9, pos_y - 9, 18, 18, 4, 4)
@@ -193,6 +205,20 @@ class CarrefourWidget(QWidget):
             x = place[0]
             y = place[1]
             angle = place[2] + 9 * vehicle.get("braquage", 0)
+
+            reste = vehicle.get("virage", 0)
+            if reste > 0:
+                ancienne = self.position_voiture(
+                    vehicle["ancienne_voie"], vehicle["ancienne_position"], longueur
+                )
+                ecart = angle - ancienne[2]
+                if ecart > 180:
+                    ecart -= 360
+                if ecart < -180:
+                    ecart += 360
+                x = x + (ancienne[0] - x) * reste
+                y = y + (ancienne[1] - y) * reste
+                angle = angle - ecart * reste
 
             painter.save()
             painter.translate(x, y)
