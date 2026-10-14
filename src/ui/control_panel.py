@@ -17,6 +17,8 @@ class ControlPanel(QGroupBox):
         self.on_set_strategy = on_set_strategy
         self.heure_de_pointe = False
         self.strategie = None
+        self.connected = False
+        self.trafic_available = False
         self.command_buttons = []
         self.setMinimumWidth(290)
 
@@ -114,6 +116,8 @@ class ControlPanel(QGroupBox):
             self.on_set_strategy("fixe")
 
     def set_trafic(self, trafic):
+        self.trafic_available = bool(trafic)
+        self.bouton_pointe.setEnabled(self.connected and self.trafic_available)
         self.heure_de_pointe = trafic.get("heure_de_pointe", False)
         if not trafic:
             self.trafic_label.setText("Trafic : en attente...")
@@ -129,6 +133,7 @@ class ControlPanel(QGroupBox):
 
     def set_strategie(self, strategie):
         self.strategie = strategie
+        self.bouton_strategie.setEnabled(self.connected and strategie in ["fixe", "adaptatif"])
         if strategie is None:
             self.bouton_strategie.setText("Feux : en attente...")
             self.strategie_label.setText("Stratégie : en attente...")
@@ -140,8 +145,11 @@ class ControlPanel(QGroupBox):
             self.strategie_label.setText("Stratégie : feux fixes")
 
     def set_status(self, connected, error_message=""):
+        self.connected = connected
         for bouton in self.command_buttons:
             bouton.setEnabled(connected)
+        self.bouton_pointe.setEnabled(connected and self.trafic_available)
+        self.bouton_strategie.setEnabled(connected and self.strategie in ["fixe", "adaptatif"])
         if connected:
             self.status_label.setText("Connexion : connectée")
             self.status_label.setStyleSheet("color: green; font-weight: bold;")
