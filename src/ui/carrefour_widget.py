@@ -1,6 +1,11 @@
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtGui import QPainter, QColor, QBrush
+from PyQt6.QtGui import QPainter, QColor, QBrush, QPen
 from PyQt6.QtCore import Qt
+
+# Largeur d'un vehicule (meme valeur que Vehicule.LARGEUR cote serveur).
+# On la redefinit ici : le client ne doit pas importer le code du serveur.
+LARGEUR_VEHICULE = 20
+
 
 class CarrefourWidget(QWidget):
 
@@ -8,6 +13,7 @@ class CarrefourWidget(QWidget):
         super().__init__()
         self.state = {
             "feux": [],
+            "vehicules": [],
         }
         self.setMinimumSize(400, 400)
 
@@ -16,6 +22,18 @@ class CarrefourWidget(QWidget):
             return
         self.state = state
         self.update()
+
+    def rectangle_vehicule(self, voie, position, longueur):
+        """Rectangle (x, y, largeur, hauteur) du vehicule, relatif au centre du carrefour."""
+        avant = position
+        arriere = position - longueur
+        if voie == "Nord":
+            return (-35, arriere, LARGEUR_VEHICULE, longueur)
+        if voie == "Sud":
+            return (15, -avant, LARGEUR_VEHICULE, longueur)
+        if voie == "Ouest":
+            return (arriere, 15, longueur, LARGEUR_VEHICULE)
+        return (-avant, -35, longueur, LARGEUR_VEHICULE)
 
     def paintEvent(self, event):
 
@@ -57,6 +75,24 @@ class CarrefourWidget(QWidget):
         painter.drawRect(centre_x, centre_y + 67, 50, 3)
         painter.drawRect(centre_x - 70, centre_y, 3, 50)
         painter.drawRect(centre_x + 67, centre_y - 50, 3, 50)
+
+        # --- Vehicules (envoyes par le serveur) ---
+        for vehicule in self.state.get("vehicules", []):
+            x, y, w, h = self.rectangle_vehicule(
+                vehicule["voie"], vehicule["position"], vehicule["longueur"]
+            )
+            couleur = QColor(vehicule.get("couleur", "black"))
+            if not couleur.isValid():
+                couleur = QColor("black")
+
+            painter.setBrush(QBrush(couleur))
+            if vehicule.get("urgence"):
+                painter.setPen(QPen(QColor("blue"), 3))
+            else:
+                painter.setPen(QPen(QColor("black"), 1))
+            painter.drawRect(int(centre_x + x), int(centre_y + y), int(w), int(h))
+
+        painter.setPen(Qt.PenStyle.NoPen)
 
         for feu in self.state.get("feux", []):
             pos_x, pos_y = positions_feux[feu["nom"]]
