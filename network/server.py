@@ -3,8 +3,8 @@ import socket
 import threading
 import time
 
-from ..core.carrefour import Carrefour
-from ..utils.logger import EventLogger
+from core.carrefour import Carrefour
+from utils.logger import EventLogger
 from .protocol import decode_messages, encode_message
 
 
