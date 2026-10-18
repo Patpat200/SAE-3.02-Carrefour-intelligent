@@ -1,10 +1,13 @@
 from PyQt6.QtCore import QTimer, pyqtSignal
 from datetime import datetime
-from PyQt6.QtWidgets import QHBoxLayout, QMainWindow, QScrollArea, QWidget
+import time
+from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QMainWindow, QMessageBox, QScrollArea, QWidget
 
 from .carrefour_widget import CarrefourWidget
 from .control_panel import ControlPanel
 from ..network.client import NetworkClient
+from ..utils.config_loader import save_settings
+from ..utils.history_export import export_history
 
 
 class MainWindow(QMainWindow):
@@ -12,6 +15,9 @@ class MainWindow(QMainWindow):
 
     def __init__(self, settings):
         super().__init__()
+        self.settings = settings
+        self.last_state_time = None
+        self.manual_disconnect = False
         self.setWindowTitle("Simulation Carrefour - Colmar")
         options = settings.get("interface", {})
         self.resize(options.get("largeur", 960), options.get("hauteur", 700))
@@ -28,7 +34,7 @@ class MainWindow(QMainWindow):
         self.control_panel.decor_checkbox.toggled.connect(self.carrefour_widget.set_decor_visible)
         panneau_scroll = QScrollArea()
         panneau_scroll.setWidgetResizable(True)
-        panneau_scroll.setMinimumWidth(320)
+        panneau_scroll.setMinimumWidth(350)
         panneau_scroll.setWidget(self.control_panel)
 
         container = QWidget()
@@ -42,6 +48,12 @@ class MainWindow(QMainWindow):
         self.control_panel.add_event("Interface ouverte")
 
         network = settings.get("network", {})
+        self.control_panel.host_input.setText(network.get("host", "127.0.0.1"))
+        self.control_panel.port_input.setValue(network.get("port", 5000))
+        self.control_panel.connect_button.clicked.connect(self.connect_to_server)
+        self.control_panel.disconnect_button.clicked.connect(self.disconnect_from_server)
+        self.control_panel.export_history_button.clicked.connect(self.save_history)
+        self.control_panel.capture_button.clicked.connect(self.save_capture)
         self.client = NetworkClient(
             network.get("host", "127.0.0.1"),
             network.get("port", 5000),
@@ -59,6 +71,10 @@ class MainWindow(QMainWindow):
             self.set_connection(False, self.client.last_error or "Commande non envoyée")
 
     def refresh(self):
+        if self.manual_disconnect:
+            self.set_connection(False, "Déconnexion volontaire")
+            self.update_data_status()
+            return
         self.set_connection(self.client.connected, self.client.last_error)
         state = self.client.consume_latest_state()
         if state is not None:
@@ -66,8 +82,81 @@ class MainWindow(QMainWindow):
         if self.client.last_error and self.client.last_error != self.last_network_error:
             self.control_panel.add_event("Erreur réseau : " + self.client.last_error)
         self.last_network_error = self.client.last_error
+        self.update_data_status()
+
+    def update_data_status(self):
+        age = None if self.last_state_time is None else time.monotonic() - self.last_state_time
+        texte = self.control_panel.set_data_age(age, self.connected)
+        stale = age is None or not self.connected or age >= 3
+        self.carrefour_widget.set_data_message(texte, stale)
+
+    def connect_to_server(self):
+        host = self.control_panel.host_input.text().strip()
+        port = self.control_panel.port_input.value()
+        if not host or any(c.isspace() for c in host) or "/" in host:
+            self.statusBar().showMessage("Renseigne une adresse IP ou un nom de serveur valide")
+            return
+        self.client.stop()
+        self.settings.setdefault("network", {}).update({"host": host, "port": port})
+        try:
+            save_settings(self.settings)
+        except OSError as error:
+            self.control_panel.add_event("Adresse non enregistrée : " + str(error))
+        self.manual_disconnect = False
+        self.last_network_error = ""
+        self.last_state_time = None
+        self.last_emergency = None
+        self.last_strategy = None
+        self.last_rush_hour = None
+        self.carrefour_widget.set_state({"feux": [], "vehicules": [], "densite": {}})
+        self.control_panel.set_density({})
+        self.control_panel.set_feux([])
+        self.control_panel.set_emergency(None)
+        self.control_panel.set_trafic({})
+        self.control_panel.set_strategie(None)
+        self.control_panel.last_update_label.setText("Aucune donnée reçue")
+        self.client = NetworkClient(host, port, self.settings["network"].get("reconnect_delay_s", 2))
+        self.set_connection(False, "Connexion en cours…")
+        self.control_panel.disconnect_button.setEnabled(True)
+        self.control_panel.add_event("Connexion demandée vers " + host + ":" + str(port))
+        self.client.start()
+        self.update_data_status()
+
+    def disconnect_from_server(self):
+        self.manual_disconnect = True
+        self.client.stop()
+        self.client.consume_latest_state()
+        self.control_panel.add_event("Déconnexion volontaire")
+        self.control_panel.disconnect_button.setEnabled(False)
+        self.set_connection(False, "Déconnexion volontaire")
+        self.update_data_status()
+
+    def save_history(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Exporter l'historique", "historique.txt", "Texte (*.txt)")
+        if not path:
+            return
+        entries = [self.control_panel.history_list.item(i).text()
+                   for i in range(self.control_panel.history_list.count())]
+        try:
+            export_history(entries, path)
+        except OSError as error:
+            QMessageBox.warning(self, "Export impossible", str(error))
+        else:
+            self.statusBar().showMessage("Historique enregistré dans " + path)
+
+    def save_capture(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Capturer le carrefour", "carrefour.png", "Images PNG (*.png)")
+        if not path:
+            return
+        if not path.lower().endswith(".png"):
+            path += ".png"
+        if self.carrefour_widget.grab().save(path, "PNG"):
+            self.statusBar().showMessage("Capture enregistrée dans " + path)
+        else:
+            QMessageBox.warning(self, "Capture impossible", "Impossible d'enregistrer l'image dans ce fichier.")
 
     def afficher_etat(self, state):
+        self.last_state_time = time.monotonic()
         self.carrefour_widget.set_state(state)
         self.control_panel.set_density(state.get("densite", {}))
         self.control_panel.set_feux(state.get("feux", []))

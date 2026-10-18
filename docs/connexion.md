@@ -6,7 +6,7 @@ L'adresse actuelle est `10.128.238.241` et le port est `5000`.
 Sur le PC du camarade, lancer le serveur :
 
 ```powershell
-python server_main.py
+python3 server_main.py
 ```
 
 Son serveur écoute sur `0.0.0.0:5000`. Sur le PC client, depuis SAE2, lancer :
@@ -24,8 +24,9 @@ Le serveur fourni gère `trigger_emergency` et `clear_emergency`.
 Les commandes d'heure de pointe et de stratégie restent désactivées tant que
 le serveur ne transmet pas les champs `trafic` et `strategie` correspondants.
 
-Si l'adresse IP du camarade change, mettre à jour `network.host` et relancer
-le client. L'adresse doit être celle de son PC, pas `127.0.0.1`.
+Si l'adresse IP du camarade change, ouvrir l'onglet **Connexion**, renseigner
+la nouvelle adresse et cliquer sur **Se connecter / Réessayer**. Elle est
+enregistrée dans `network.host`. Utiliser l'adresse de son PC, pas `127.0.0.1`.
 
 Pour vérifier l'accès au port depuis le client :
 

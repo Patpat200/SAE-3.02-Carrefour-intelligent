@@ -24,6 +24,8 @@ class CarrefourWidget(QWidget):
         }
         self.setMinimumSize(500, 500)
         self.decor_visible = True
+        self.data_message = "En attente du serveur"
+        self.data_stale = True
 
         self.repaint_timer = QTimer(self)
         self.repaint_timer.timeout.connect(self.update)
@@ -38,6 +40,12 @@ class CarrefourWidget(QWidget):
     def set_decor_visible(self, visible):
         self.decor_visible = visible
         self.update()
+
+    def set_data_message(self, message, stale):
+        if (message, stale) != (self.data_message, self.data_stale):
+            self.data_message = message
+            self.data_stale = stale
+            self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -60,6 +68,13 @@ class CarrefourWidget(QWidget):
         self.dessiner_vehicules(painter)
         self.dessiner_feux(painter)
         self.dessiner_panneaux(painter)
+        painter.setFont(QFont("Arial", 9))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#855800" if self.data_stale else "#1e663a"))
+        largeur = painter.fontMetrics().horizontalAdvance(self.data_message) + 16
+        painter.drawRoundedRect(8, 670, largeur, 23, 3, 3)
+        painter.setPen(QColor("white"))
+        painter.drawText(16, 686, self.data_message)
 
     def dessiner_decor(self, painter):
         cx = self.centre_x

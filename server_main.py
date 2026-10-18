@@ -11,7 +11,7 @@ import time
 # Force Python a chercher les dossiers (network, core, utils) a cote de ce fichier
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from network.server import SimulationServer
+from src.network.server import SimulationServer
 
 HOST = "0.0.0.0"   # ecoute sur toutes les interfaces
 PORT = 5000

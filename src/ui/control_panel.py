@@ -2,9 +2,9 @@ from datetime import datetime
 
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QGridLayout, QGroupBox, QHeaderView,
+    QAbstractItemView, QCheckBox, QFormLayout, QGridLayout, QGroupBox, QHeaderView,
     QLabel, QListWidget, QPushButton, QTableWidget, QTableWidgetItem,
-    QTabWidget, QVBoxLayout, QWidget,
+    QLineEdit, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
 
 
@@ -26,10 +26,13 @@ class ControlPanel(QGroupBox):
         self.status_label.setWordWrap(True)
         self.last_update_label = QLabel("Aucune donnée reçue")
         self.last_update_label.setWordWrap(True)
+        self.data_status_label = QLabel("En attente des données du serveur")
+        self.data_status_label.setWordWrap(True)
         self.tabs = QTabWidget()
         layout = QVBoxLayout(self)
         layout.addWidget(self.status_label)
         layout.addWidget(self.last_update_label)
+        layout.addWidget(self.data_status_label)
         layout.addWidget(self.tabs)
 
         suivi = QWidget()
@@ -59,6 +62,8 @@ class ControlPanel(QGroupBox):
         self.decor_checkbox = QCheckBox("Afficher les bâtiments et le parc")
         self.decor_checkbox.setChecked(True)
         suivi_layout.addWidget(self.decor_checkbox)
+        self.capture_button = QPushButton("Enregistrer une capture du carrefour")
+        suivi_layout.addWidget(self.capture_button)
         suivi_layout.addStretch()
         self.tabs.addTab(suivi, "Suivi")
 
@@ -94,10 +99,49 @@ class ControlPanel(QGroupBox):
         historique_layout = QVBoxLayout(historique)
         self.history_list = QListWidget()
         historique_layout.addWidget(self.history_list)
+        self.export_history_button = QPushButton("Exporter l'historique en texte")
+        historique_layout.addWidget(self.export_history_button)
         self.clear_history_button = QPushButton("Effacer l'historique")
         self.clear_history_button.clicked.connect(self.history_list.clear)
         historique_layout.addWidget(self.clear_history_button)
         self.tabs.addTab(historique, "Historique")
+
+        connexion = QWidget()
+        connexion_layout = QVBoxLayout(connexion)
+        formulaire = QFormLayout()
+        self.host_input = QLineEdit()
+        self.host_input.setPlaceholderText("Exemple : 192.168.1.20")
+        self.port_input = QSpinBox()
+        self.port_input.setRange(1, 65535)
+        formulaire.addRow("Adresse du serveur", self.host_input)
+        formulaire.addRow("Port TCP", self.port_input)
+        connexion_layout.addLayout(formulaire)
+        self.connect_button = QPushButton("Se connecter / Réessayer")
+        self.disconnect_button = QPushButton("Se déconnecter")
+        connexion_layout.addWidget(self.connect_button)
+        connexion_layout.addWidget(self.disconnect_button)
+        aide_connexion = QLabel("Utiliser l'adresse IP du PC qui lance le serveur. Les paramètres sont mémorisés à la connexion. Une connexion perdue est retentée automatiquement, sauf après une déconnexion volontaire.")
+        aide_connexion.setWordWrap(True)
+        connexion_layout.addWidget(aide_connexion)
+        connexion_layout.addStretch()
+        self.tabs.addTab(connexion, "Connexion")
+
+    def set_data_age(self, age, connected):
+        if age is None:
+            texte = "En attente des données du serveur"
+            couleur = "#855800"
+        elif not connected:
+            texte = "Affichage non actualisé : serveur déconnecté"
+            couleur = "#b92020"
+        elif age >= 3:
+            texte = "Aucune nouvelle donnée depuis " + str(int(age)) + " s"
+            couleur = "#855800"
+        else:
+            texte = "Données actualisées"
+            couleur = "#167d27"
+        self.data_status_label.setText(texte)
+        self.data_status_label.setStyleSheet("color: " + couleur + ";")
+        return texte
 
     def add_event(self, texte):
         heure = datetime.now().strftime("%H:%M:%S")
