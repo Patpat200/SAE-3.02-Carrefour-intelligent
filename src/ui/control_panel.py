@@ -1,4 +1,5 @@
 from datetime import datetime
+from PyQt6.QtCore import Qt
 
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
@@ -92,6 +93,10 @@ class ControlPanel(QGroupBox):
         aide = QLabel("Les demandes seront transmises au serveur. L'affichage attend ses nouvelles données.")
         aide.setWordWrap(True)
         commandes_layout.addWidget(aide)
+        self.command_status_label = QLabel("Aucune demande en attente")
+        self.command_status_label.setWordWrap(True)
+        self.command_status_label.setTextFormat(Qt.TextFormat.PlainText)
+        commandes_layout.addWidget(self.command_status_label)
         commandes_layout.addStretch()
         self.tabs.addTab(commandes, "Commandes")
 

@@ -25,6 +25,23 @@ serveur n'en fournit pas les données.
 
 L'interface ne calcule pas les déplacements, les priorités ou les cycles des feux.
 
+Une commande passe d'abord à « Envoyée ». Si les données suivantes correspondent
+à la demande, le message devient « État observé ». Cela constate l'état du
+serveur et ne constitue pas un accusé de réception identifié par commande.
+Après cinq secondes sans état correspondant, un avertissement apparaît.
+Une réponse tardive peut encore être observée. Une nouvelle demande remplace
+la précédente dans cet indicateur. Une déconnexion annule le suivi en attente.
+
+## Véhicules
+
+L'onglet **Véhicules** liste les identifiants, les voies et les types reçus.
+Choisir une voie ou cocher **Seulement les véhicules d'urgence** pour filtrer.
+Le compteur indique combien de véhicules sont affichés parmi ceux reçus.
+
+Sélectionner une ligne entoure le véhicule en rose sur le dessin. La sélection
+reste active pendant ses déplacements et disparaît lorsqu'il quitte les données
+reçues ou le filtre. Cette action ne change pas son trajet.
+
 ## Historique et capture
 
 Dans **Historique**, cliquer sur **Exporter l'historique en texte** et choisir

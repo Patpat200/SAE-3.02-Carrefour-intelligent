@@ -26,6 +26,7 @@ class CarrefourWidget(QWidget):
         self.decor_visible = True
         self.data_message = "En attente du serveur"
         self.data_stale = True
+        self.selected_vehicle_id = ""
 
         self.repaint_timer = QTimer(self)
         self.repaint_timer.timeout.connect(self.update)
@@ -39,6 +40,10 @@ class CarrefourWidget(QWidget):
 
     def set_decor_visible(self, visible):
         self.decor_visible = visible
+        self.update()
+
+    def set_selected_vehicle(self, identifier):
+        self.selected_vehicle_id = identifier
         self.update()
 
     def set_data_message(self, message, stale):
@@ -212,7 +217,7 @@ class CarrefourWidget(QWidget):
     def dessiner_vehicules(self, painter):
         clignote = int(time.monotonic() * 3) % 2 == 0
 
-        for vehicle in self.state.get("vehicules", []):
+        for index, vehicle in enumerate(self.state.get("vehicules", [])):
             longueur = vehicle["longueur"]
             place = self.position_voiture(
                 vehicle["voie"], vehicle["position"], longueur, vehicle.get("decalage", 0)
@@ -253,6 +258,11 @@ class CarrefourWidget(QWidget):
                 if clignote and vehicle.get("direction") == "droite":
                     painter.drawRect(5, -longueur // 2, 5, 4)
 
+            identifier = str(vehicle.get("id", "vehicule-" + str(index)))
+            if identifier == self.selected_vehicle_id:
+                painter.setPen(QPen(QColor("magenta"), 3))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawRoundedRect(-13, -longueur // 2 - 3, 26, longueur + 6, 4, 4)
             painter.restore()
 
     def dessiner_urgence(self, painter, longueur):

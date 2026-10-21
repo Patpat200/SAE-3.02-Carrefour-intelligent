@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QMainWindow, QMessageBox, 
 
 from .carrefour_widget import CarrefourWidget
 from .control_panel import ControlPanel
+from .vehicle_panel import VehiclePanel
 from ..network.client import NetworkClient
 from ..utils.config_loader import save_settings
 from ..utils.history_export import export_history
@@ -18,6 +19,7 @@ class MainWindow(QMainWindow):
         self.settings = settings
         self.last_state_time = None
         self.manual_disconnect = False
+        self.pending_command = None
         self.setWindowTitle("Simulation Carrefour - Colmar")
         options = settings.get("interface", {})
         self.resize(options.get("largeur", 960), options.get("hauteur", 700))
@@ -31,6 +33,9 @@ class MainWindow(QMainWindow):
             self.trigger_emergency, self.clear_emergency,
             self.set_rush_hour, self.set_strategy,
         )
+        self.vehicle_panel = VehiclePanel()
+        self.control_panel.tabs.insertTab(1, self.vehicle_panel, "Véhicules")
+        self.vehicle_panel.vehicle_selected.connect(self.carrefour_widget.set_selected_vehicle)
         self.control_panel.decor_checkbox.toggled.connect(self.carrefour_widget.set_decor_visible)
         panneau_scroll = QScrollArea()
         panneau_scroll.setWidgetResizable(True)
@@ -69,6 +74,16 @@ class MainWindow(QMainWindow):
     def envoyer_commande(self, action, params):
         if not self.client.send_command(action, **params):
             self.set_connection(False, self.client.last_error or "Commande non envoyée")
+            self.control_panel.command_status_label.setText("Demande non envoyée")
+            self.pending_command = None
+            return
+        labels = {"trigger_emergency": "urgence " + str(params.get("road", "")),
+                  "clear_emergency": "fin d'urgence", "set_rush_hour": "heure de pointe",
+                  "set_strategy": "stratégie " + str(params.get("value", ""))}
+        label = labels.get(action, action)
+        self.pending_command = {"action": action, "params": params, "label": label,
+                                "time": time.monotonic()}
+        self.control_panel.command_status_label.setText("Envoyée : " + label + " — en attente des données du serveur")
 
     def refresh(self):
         if self.manual_disconnect:
@@ -81,8 +96,37 @@ class MainWindow(QMainWindow):
             self.afficher_etat(state)
         if self.client.last_error and self.client.last_error != self.last_network_error:
             self.control_panel.add_event("Erreur réseau : " + self.client.last_error)
+            self.cancel_pending_command("Demande non confirmée : " + self.client.last_error)
+        if self.pending_command and time.monotonic() - self.pending_command["time"] >= 5:
+            self.control_panel.command_status_label.setText("État demandé non observé après 5 s : " + self.pending_command["label"])
         self.last_network_error = self.client.last_error
         self.update_data_status()
+
+    def check_pending_command(self, state):
+        if self.pending_command is None:
+            return
+        action = self.pending_command["action"]
+        params = self.pending_command["params"]
+        matches = False
+        if action == "trigger_emergency":
+            matches = state.get("urgence") == params.get("road")
+        elif action == "clear_emergency":
+            matches = "urgence" in state and state["urgence"] is None
+        elif action == "set_strategy":
+            matches = state.get("strategie") == params.get("value")
+        elif action == "set_rush_hour":
+            matches = state.get("trafic", {}).get("heure_de_pointe") == params.get("value")
+        if matches:
+            texte = "État observé : " + self.pending_command["label"]
+            self.control_panel.command_status_label.setText(texte)
+            self.control_panel.add_event(texte)
+            self.pending_command = None
+
+    def cancel_pending_command(self, reason):
+        if self.pending_command is not None:
+            self.control_panel.command_status_label.setText(reason)
+            self.control_panel.add_event(reason)
+            self.pending_command = None
 
     def update_data_status(self):
         age = None if self.last_state_time is None else time.monotonic() - self.last_state_time
@@ -97,6 +141,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Renseigne une adresse IP ou un nom de serveur valide")
             return
         self.client.stop()
+        self.cancel_pending_command("Demande non confirmée : changement de connexion")
         self.settings.setdefault("network", {}).update({"host": host, "port": port})
         try:
             save_settings(self.settings)
@@ -110,6 +155,7 @@ class MainWindow(QMainWindow):
         self.last_rush_hour = None
         self.carrefour_widget.set_state({"feux": [], "vehicules": [], "densite": {}})
         self.control_panel.set_density({})
+        self.vehicle_panel.set_vehicles([])
         self.control_panel.set_feux([])
         self.control_panel.set_emergency(None)
         self.control_panel.set_trafic({})
@@ -124,6 +170,7 @@ class MainWindow(QMainWindow):
 
     def disconnect_from_server(self):
         self.manual_disconnect = True
+        self.cancel_pending_command("Demande non confirmée : déconnexion volontaire")
         self.client.stop()
         self.client.consume_latest_state()
         self.control_panel.add_event("Déconnexion volontaire")
@@ -157,7 +204,9 @@ class MainWindow(QMainWindow):
 
     def afficher_etat(self, state):
         self.last_state_time = time.monotonic()
+        self.check_pending_command(state)
         self.carrefour_widget.set_state(state)
+        self.vehicle_panel.set_vehicles(state.get("vehicules", []))
         self.control_panel.set_density(state.get("densite", {}))
         self.control_panel.set_feux(state.get("feux", []))
         self.control_panel.set_emergency(state.get("urgence"))
