@@ -37,9 +37,13 @@ class MainWindow(QMainWindow):
         self.control_panel.tabs.insertTab(1, self.vehicle_panel, "Véhicules")
         self.vehicle_panel.vehicle_selected.connect(self.carrefour_widget.set_selected_vehicle)
         self.control_panel.decor_checkbox.toggled.connect(self.carrefour_widget.set_decor_visible)
+        self.control_panel.decor_checkbox.setChecked(options.get("decor_visible", True))
+        last_tab = options.get("last_tab", 0)
+        if isinstance(last_tab, int) and 0 <= last_tab < self.control_panel.tabs.count():
+            self.control_panel.tabs.setCurrentIndex(last_tab)
         panneau_scroll = QScrollArea()
         panneau_scroll.setWidgetResizable(True)
-        panneau_scroll.setMinimumWidth(350)
+        panneau_scroll.setMinimumWidth(365)
         panneau_scroll.setWidget(self.control_panel)
 
         container = QWidget()
@@ -94,6 +98,10 @@ class MainWindow(QMainWindow):
         state = self.client.consume_latest_state()
         if state is not None:
             self.afficher_etat(state)
+        server_error = self.client.consume_latest_server_error()
+        if server_error:
+            self.control_panel.add_event("Erreur serveur : " + server_error)
+            self.cancel_pending_command("Demande refusée : " + server_error)
         if self.client.last_error and self.client.last_error != self.last_network_error:
             self.control_panel.add_event("Erreur réseau : " + self.client.last_error)
             self.cancel_pending_command("Demande non confirmée : " + self.client.last_error)
@@ -202,6 +210,19 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "Capture impossible", "Impossible d'enregistrer l'image dans ce fichier.")
 
+    def save_interface_settings(self):
+        interface = self.settings.setdefault("interface", {})
+        interface.update({
+            "largeur": self.width(),
+            "hauteur": self.height(),
+            "decor_visible": self.control_panel.decor_checkbox.isChecked(),
+            "last_tab": self.control_panel.tabs.currentIndex(),
+        })
+        try:
+            save_settings(self.settings)
+        except OSError:
+            pass
+
     def afficher_etat(self, state):
         self.last_state_time = time.monotonic()
         self.check_pending_command(state)
@@ -264,4 +285,5 @@ class MainWindow(QMainWindow):
         self.network_timer.stop()
         self.client.stop()
         self.carrefour_widget.repaint_timer.stop()
+        self.save_interface_settings()
         super().closeEvent(event)

@@ -4,7 +4,7 @@ Lancer `main.py` dans l'environnement Python du projet.
 
 ## Connexion
 
-Ouvrir l'onglet **Connexion**, renseigner l'adresse du PC serveur et son port,
+Ouvrir l'onglet **Réseau**, renseigner l'adresse du PC serveur et son port,
 puis cliquer sur **Se connecter / Réessayer**. Les paramètres sont enregistrés
 dans `config/settings.json`. Une nouvelle tentative remet l'affichage des
 véhicules à zéro en attendant les données du serveur sélectionné.
@@ -19,7 +19,7 @@ plus actualisé. Les voitures affichées restent celles du dernier état reçu.
 ## Suivi et commandes
 
 Le tableau de suivi présente les nombres de véhicules et les états des feux
-transmis par le serveur. Les demandes d'urgence sont dans l'onglet **Commandes**.
+transmis par le serveur. Les demandes d'urgence sont dans l'onglet **Actions**.
 Les réglages d'heure de pointe et de stratégie restent désactivés lorsque le
 serveur n'en fournit pas les données.
 
@@ -44,7 +44,7 @@ reçues ou le filtre. Cette action ne change pas son trajet.
 
 ## Historique et capture
 
-Dans **Historique**, cliquer sur **Exporter l'historique en texte** et choisir
+Dans **Journal**, cliquer sur **Exporter l'historique en texte** et choisir
 un fichier. L'export contient les événements encore affichés, au maximum 100.
 Le bouton d'effacement agit uniquement sur cet historique local.
 
@@ -52,3 +52,9 @@ Dans **Suivi**, **Enregistrer une capture du carrefour** crée une image PNG du
 dessin, avec son indication d'actualisation. Cela ne modifie pas la simulation.
 
 Les exports restent disponibles lorsque le serveur est déconnecté.
+
+## Préférences de la fenêtre
+
+La taille de la fenêtre, le dernier onglet ouvert et l'affichage du décor sont
+enregistrés à la fermeture. Ils sont restaurés au prochain lancement. Ces
+préférences appartiennent au client et ne modifient pas la simulation.

@@ -6,10 +6,11 @@ Depuis le dossier du projet, avec PyQt6 installé :
 .\venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Au 21 octobre 2026, les 11 tests passent :
+Au 8 novembre 2026, les 13 tests passent :
 
-- 7 tests de l'interface avec un client simulé : filtres, sélection, commandes,
-  état observé, attente prolongée, déconnexion et données anciennes.
+- 9 tests de l'interface avec un client simulé : filtres, sélection, détails
+  actualisés, commandes, refus serveur, attente prolongée, déconnexion,
+  données anciennes et préférences de fenêtre.
 - 3 tests du protocole : messages fragmentés, caractères accentués, plusieurs
   messages dans une réception et JSON invalide.
 - 1 test avec le vrai client et le vrai serveur sur `127.0.0.1`, un port libre

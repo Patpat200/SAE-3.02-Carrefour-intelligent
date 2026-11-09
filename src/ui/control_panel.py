@@ -98,7 +98,7 @@ class ControlPanel(QGroupBox):
         self.command_status_label.setTextFormat(Qt.TextFormat.PlainText)
         commandes_layout.addWidget(self.command_status_label)
         commandes_layout.addStretch()
-        self.tabs.addTab(commandes, "Commandes")
+        self.tabs.addTab(commandes, "Actions")
 
         historique = QWidget()
         historique_layout = QVBoxLayout(historique)
@@ -109,7 +109,7 @@ class ControlPanel(QGroupBox):
         self.clear_history_button = QPushButton("Effacer l'historique")
         self.clear_history_button.clicked.connect(self.history_list.clear)
         historique_layout.addWidget(self.clear_history_button)
-        self.tabs.addTab(historique, "Historique")
+        self.tabs.addTab(historique, "Journal")
 
         connexion = QWidget()
         connexion_layout = QVBoxLayout(connexion)
@@ -129,7 +129,7 @@ class ControlPanel(QGroupBox):
         aide_connexion.setWordWrap(True)
         connexion_layout.addWidget(aide_connexion)
         connexion_layout.addStretch()
-        self.tabs.addTab(connexion, "Connexion")
+        self.tabs.addTab(connexion, "Réseau")
 
     def set_data_age(self, age, connected):
         if age is None:

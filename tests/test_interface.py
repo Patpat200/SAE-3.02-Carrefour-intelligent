@@ -16,6 +16,7 @@ class FakeClient:
         self.running = False
         self.last_error = ""
         self.state = None
+        self.server_error = None
         self.commands = []
         self.send_success = True
 
@@ -30,6 +31,11 @@ class FakeClient:
         state = self.state
         self.state = None
         return state
+
+    def consume_latest_server_error(self):
+        error = self.server_error
+        self.server_error = None
+        return error
 
     def send_command(self, action, **params):
         self.commands.append((action, params))
@@ -59,6 +65,9 @@ class InterfaceTests(unittest.TestCase):
         patcher = patch("src.ui.main_window.NetworkClient", FakeClient)
         patcher.start()
         self.addCleanup(patcher.stop)
+        self.save_settings_patcher = patch("src.ui.main_window.save_settings")
+        self.save_settings_mock = self.save_settings_patcher.start()
+        self.addCleanup(self.save_settings_patcher.stop)
         self.window = MainWindow({"network": {"host": "127.0.0.1", "port": 5000}})
         self.window.network_timer.stop()
         self.addCleanup(self.window.close)
@@ -75,6 +84,7 @@ class InterfaceTests(unittest.TestCase):
         original = copy.deepcopy(state)
         self.window.afficher_etat(state)
         self.assertEqual(panel.selected_id, "v1")
+        self.assertIn("Position : -80", panel.details_label.text())
         self.assertEqual(state, original)
 
     def test_filters_and_vehicle_departure(self):
@@ -141,6 +151,25 @@ class InterfaceTests(unittest.TestCase):
         self.window.set_rush_hour(True)
         self.window.set_strategy("adaptatif")
         self.assertEqual(self.window.client.commands, [])
+
+    def test_server_error_refuses_command_without_disconnecting(self):
+        self.window.trigger_emergency("Nord")
+        self.window.client.server_error = "Voie inconnue"
+        self.window.refresh()
+        self.assertTrue(self.window.connected)
+        self.assertIsNone(self.window.pending_command)
+        self.assertEqual(self.window.control_panel.command_status_label.text(), "Demande refusée : Voie inconnue")
+
+    def test_interface_preferences_are_saved(self):
+        self.window.resize(810, 610)
+        self.window.control_panel.decor_checkbox.setChecked(False)
+        self.window.control_panel.tabs.setCurrentIndex(3)
+        self.window.save_interface_settings()
+        self.assertEqual(self.window.settings["interface"]["largeur"], 810)
+        self.assertEqual(self.window.settings["interface"]["hauteur"], 610)
+        self.assertFalse(self.window.settings["interface"]["decor_visible"])
+        self.assertEqual(self.window.settings["interface"]["last_tab"], 3)
+        self.save_settings_mock.assert_called_once_with(self.window.settings)
 
 
 if __name__ == "__main__":

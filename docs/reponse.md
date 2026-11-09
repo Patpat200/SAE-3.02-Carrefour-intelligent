@@ -4,7 +4,7 @@
 
 **SAE A3.09 / A3.02 — BUT R&T DevCloud, IUT de Colmar**  
 **Binôme : Hussain AL SHAQSI et Adil EL BOUMAKHLOUFI**  
-**Point d'avancement : 21 octobre 2026**
+**Point d'avancement : 8 novembre 2026**
 
 Ce document répond au cahier des charges V2.1 du 16 septembre 2026. Il présente la solution retenue et l'avancement de la partie interface graphique dans ce dossier. La connexion TCP est intégrée. Les essais locaux passent ; le fonctionnement entre les deux PC reste à valider.
 
@@ -60,9 +60,9 @@ La fenêtre affiche le carrefour à gauche et un panneau organisé en cinq ongle
 
 - **Suivi** : tableau des quatre voies, couleurs des feux, urgence active, heure simulée, niveau de trafic et stratégie reçue.
 - **Véhicules** : liste filtrable par voie ou urgence ; sélectionner une ligne repère le véhicule sur le dessin sans changer son mouvement.
-- **Connexion** : adresse, port, connexion et déconnexion volontaires.
-- **Commandes** : demandes d'urgence par direction, fin d'urgence, activation de l'heure de pointe et choix des feux fixes ou adaptatifs.
-- **Historique** : demandes effectuées et changements reçus, avec leur heure, effacement et export en texte.
+- **Réseau** : adresse, port, connexion et déconnexion volontaires.
+- **Actions** : demandes d'urgence par direction, fin d'urgence, activation de l'heure de pointe et choix des feux fixes ou adaptatifs.
+- **Journal** : demandes effectuées et changements reçus, avec leur heure, effacement et export en texte.
 
 Le dessin comprend les routes, les trottoirs, les passages piétons, les bâtiments, un parc, des panneaux et les noms des rues. Une case permet de masquer les bâtiments et le parc. Le dessin s'adapte à la taille de la fenêtre.
 

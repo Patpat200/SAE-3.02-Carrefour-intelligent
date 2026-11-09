@@ -14,6 +14,7 @@ class VehiclePanel(QWidget):
         self.selected_id = ""
         self.visible_ids = []
         self.rows = None
+        self.vehicles_by_id = {}
         self.road_filter = QComboBox()
         self.road_filter.addItems(["Toutes les voies", "Nord", "Sud", "Est", "Ouest"])
         self.emergency_filter = QCheckBox("Seulement les véhicules d'urgence")
@@ -43,16 +44,19 @@ class VehiclePanel(QWidget):
     def refresh(self):
         road = self.road_filter.currentText()
         rows = []
+        self.vehicles_by_id = {}
         for index, vehicle in enumerate(self.vehicles):
+            identifier = str(vehicle.get("id", "vehicule-" + str(index)))
+            self.vehicles_by_id[identifier] = vehicle
             if road != "Toutes les voies" and vehicle.get("voie") != road:
                 continue
             if self.emergency_filter.isChecked() and not vehicle.get("urgence"):
                 continue
-            identifier = str(vehicle.get("id", "vehicule-" + str(index)))
             rows.append((identifier, vehicle.get("voie", "—"),
                          "Urgence" if vehicle.get("urgence") else "Normal"))
         self.count_label.setText(str(len(rows)) + " affiché(s) sur " + str(len(self.vehicles)))
         if rows == self.rows:
+            self.update_details()
             return
         self.rows = rows
         self.visible_ids = [row[0] for row in rows]
@@ -74,9 +78,20 @@ class VehiclePanel(QWidget):
         selected = self.table.selectionModel().selectedRows()
         identifier = self.visible_ids[selected[0].row()] if selected else ""
         self.selected_id = identifier
+        self.update_details()
+        self.vehicle_selected.emit(identifier)
+
+    def update_details(self):
+        identifier = self.selected_id
+        vehicle = self.vehicles_by_id.get(identifier)
         if identifier:
-            row = self.rows[self.visible_ids.index(identifier)]
-            self.details_label.setText("Identifiant : " + row[0] + "\nVoie : " + row[1] + "\nType : " + row[2])
+            vehicle_type = "Urgence" if vehicle.get("urgence") else "Normal"
+            self.details_label.setText(
+                "Identifiant : " + identifier + "\n"
+                "Voie : " + str(vehicle.get("voie", "—")) + "\n"
+                "Type : " + vehicle_type + "\n"
+                "Position : " + str(vehicle.get("position", "—")) + "\n"
+                "Couleur : " + str(vehicle.get("couleur", "rouge" if vehicle.get("urgence") else "bleu"))
+            )
         else:
             self.details_label.setText("Sélectionner un véhicule pour le repérer sur le dessin.")
-        self.vehicle_selected.emit(identifier)
