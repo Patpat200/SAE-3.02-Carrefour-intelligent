@@ -7,18 +7,63 @@ La maquette représente le croisement de l’avenue d’Alsace et de la route de
 
 ## Installer et lancer
 
-Il faut Python 3.11 ou supérieur. Depuis la racine du dépôt, créez un environnement virtuel et installez les dépendances.
+### 1. Installer Python, pip et Git
 
-**Windows**
+Le projet demande **Python 3.11 ou plus récent**. `pip` sert à installer les bibliothèques du projet, dont PyQt6. Git sert à récupérer le code depuis GitHub.
+
+**Windows avec PowerShell**
+
+Installez le [gestionnaire d’installation Python](https://www.python.org/downloads/windows/) et [Git pour Windows](https://git-scm.com/install/windows). Ouvrez ensuite un nouveau terminal PowerShell. Si Python 3.15 est déjà installé, passez directement aux commandes de vérification.
+
+```powershell
+pymanager install 3.15
+py -3.15 --version
+py -3.15 -m pip --version
+git --version
+```
+
+Pip est fourni avec Python. Si la commande affiche `No module named pip`, lancez `py -3.15 -m ensurepip --upgrade` et vérifiez à nouveau.
+
+**Debian ou Ubuntu**
 
 ```bash
-py -m venv .venv
+sudo apt update
+sudo apt install python3 python3-pip python3-venv git
+
+python3 --version
+python3 -m pip --version
+git --version
+```
+
+### 2. Cloner le projet
+
+Dans le terminal, placez-vous dans le dossier où vous voulez ranger le projet. Les commandes sont les mêmes sous Windows et Linux.
+
+```bash
+git clone https://github.com/Patpat200/SAE-3.02-Carrefour-intelligent.git
+cd SAE-3.02-Carrefour-intelligent
+```
+
+### 3. Installer les dépendances et lancer la maquette
+
+L’environnement virtuel `.venv` garde les bibliothèques du projet dans son propre dossier. Les commandes ci-dessous utilisent directement son exécutable Python.
+
+**Windows avec PowerShell**
+
+```powershell
+python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 python server_main.py
 ```
 
-**Linux**
+Dans un deuxième terminal, depuis la racine du projet, lancez le client.
+
+```powershell
+python main.py
+```
+
+**Debian ou Ubuntu**
 
 ```bash
 python3 -m venv .venv
@@ -27,10 +72,10 @@ pip install -r requirements.txt
 python server_main.py
 ```
 
-Dans un deuxième terminal :
+Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 
 ```bash
-python main.py
+.venv/bin/python main.py
 ```
 
 Sur le même PC, utilisez **127.0.0.1** et le **port 5000** dans l’onglet **Réseau**. Sur deux PC, le client utilise l’adresse IPv4 du PC serveur. Gardez le serveur ouvert pendant la simulation. [Connexion sur deux PC](docs/connexion.md)
