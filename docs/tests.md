@@ -1,36 +1,20 @@
-# Vérifications du client
+# Tests de la maquette
 
-Depuis le dossier du projet, avec PyQt6 installé :
+Depuis la racine du projet, dans l’environnement virtuel :
 
-```powershell
-.\venv\Scripts\python.exe -m unittest discover -s tests -v
+```bash
+python -m unittest discover -s tests -v
 ```
 
-Au 8 novembre 2026, les 13 tests passent :
+Les tests vérifient le trajet selon la circulation, l’ordre de passage des urgences, l’annulation, les collisions dans des scénarios reproductibles et le mode adaptatif. Ils couvrent aussi la connexion TCP locale, les messages JSON fragmentés ou invalides, les confirmations du serveur, une panne d’écriture SQLite et les commandes de l’interface.
 
-- 9 tests de l'interface avec un client simulé : filtres, sélection, détails
-  actualisés, commandes, refus serveur, attente prolongée, déconnexion,
-  données anciennes et préférences de fenêtre.
-- 3 tests du protocole : messages fragmentés, caractères accentués, plusieurs
-  messages dans une réception et JSON invalide.
-- 1 test avec le vrai client et le vrai serveur sur `127.0.0.1`, un port libre
-  et une base SQLite temporaire : connexion, déclenchement et fin d'urgence sur
-  les quatre voies, puis vérification des événements enregistrés.
+## Essai sur deux PC avant le rendu
 
-Le test local ne contacte pas le serveur du camarade et ne modifie pas la
-configuration. Il nécessite de pouvoir ouvrir une socket locale et écrire
-dans le dossier temporaire du système.
+1. Connecter le client Windows au serveur Debian avec [le guide de connexion](connexion.md).
+2. Vérifier que les véhicules avancent et que les compteurs changent.
+3. Demander une urgence avec une sortie sur le côté. Vérifier le trajet affiché et le feu bleu.
+4. Demander une deuxième urgence. Vérifier le compteur de la file et le passage suivant.
+5. Activer les feux adaptatifs et l’heure de pointe. Vérifier les confirmations du serveur.
+6. Arrêter le serveur puis le redémarrer. Vérifier l’avertissement puis la reprise de l’affichage.
 
-La fenêtre a aussi été vérifiée visuellement avec des données de démonstration :
-table des véhicules, sélection et contour sur le dessin.
-
-## Essai restant sur deux PC
-
-1. Lancer le serveur sur Debian avec une écoute sur `0.0.0.0:5000`.
-2. Renseigner son adresse IPv4 et le port dans l'onglet Connexion du client.
-3. Vérifier l'arrivée continue des données et déclencher puis terminer une urgence.
-4. Arrêter le serveur et vérifier l'avertissement, puis le redémarrer pour
-   contrôler la reconnexion.
-
-Les essais locaux ne valident pas le réseau Windows/Debian, le calcul d'un
-itinéraire optimal ni les urgences simultanées.
+Noter la date, les deux systèmes utilisés et les résultats observés.

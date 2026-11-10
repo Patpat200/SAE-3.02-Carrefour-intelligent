@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt
 
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QFormLayout, QGridLayout, QGroupBox, QHeaderView,
+    QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QGridLayout, QGroupBox, QHeaderView,
     QLabel, QListWidget, QPushButton, QTableWidget, QTableWidgetItem,
     QLineEdit, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
@@ -71,14 +71,28 @@ class ControlPanel(QGroupBox):
         commandes = QWidget()
         commandes_layout = QVBoxLayout(commandes)
         commandes_layout.addWidget(QLabel("Demander un passage prioritaire"))
+        options_urgence = QFormLayout()
+        self.type_urgence = QComboBox()
+        self.type_urgence.addItems(["Secours", "Pompiers", "Police", "SAMU"])
+        self.sortie_urgence = QComboBox()
+        self.sortie_urgence.addItem("En face, avec choix de l’itinéraire", None)
+        for voie in ["Nord", "Sud", "Est", "Ouest"]:
+            self.sortie_urgence.addItem(voie, voie)
+        options_urgence.addRow("Véhicule", self.type_urgence)
+        options_urgence.addRow("Sortie", self.sortie_urgence)
+        commandes_layout.addLayout(options_urgence)
         grille = QGridLayout()
         for numero, voie in enumerate(["Nord", "Sud", "Est", "Ouest"]):
             bouton = QPushButton("Urgence " + voie)
-            bouton.clicked.connect(lambda checked=False, road=voie: self.on_trigger_emergency(road))
+            bouton.clicked.connect(
+                lambda checked=False, road=voie: self.on_trigger_emergency(
+                    road, self.sortie_urgence.currentData(), self.type_urgence.currentText()
+                )
+            )
             grille.addWidget(bouton, numero // 2, numero % 2)
             self.command_buttons.append(bouton)
         commandes_layout.addLayout(grille)
-        bouton_fin = QPushButton("Fin urgence")
+        bouton_fin = QPushButton("Annuler l’urgence active")
         bouton_fin.clicked.connect(on_clear_emergency)
         commandes_layout.addWidget(bouton_fin)
         self.command_buttons.append(bouton_fin)
@@ -221,8 +235,14 @@ class ControlPanel(QGroupBox):
             cellule.setForeground(QColor(couleurs.get(etat, "#555555")))
             cellule.setToolTip(voie + " : " + etat.lower())
 
-    def set_emergency(self, road):
-        if road:
+    def set_emergency(self, road, trajet=None, en_attente=0):
+        if trajet:
+            texte = f"{trajet['type']} : entrée {trajet['entree']} → sortie {trajet['sortie']}"
+            if trajet["depart"] != trajet["entree"]:
+                texte += f" (départ {trajet['depart']})"
+            self.emergency_label.setText(texte + f"\nUrgences en attente : {en_attente}")
+            self.emergency_label.setStyleSheet("color: red; font-weight: bold;")
+        elif road:
             self.emergency_label.setText("URGENCE ACTIVE : " + road)
             self.emergency_label.setStyleSheet("color: red; font-weight: bold;")
         else:

@@ -1,6 +1,6 @@
 class Pathfinder:
-    def __init__(self):
-        self.graph = {
+    def __init__(self, graph=None):
+        self.graph = graph if graph is not None else {
             "Nord": {"Sud": 2, "Est": 1, "Ouest": 1},
             "Sud": {"Nord": 2, "Est": 1, "Ouest": 1},
             "Est": {"Nord": 1, "Sud": 1, "Ouest": 2},
@@ -13,7 +13,7 @@ class Pathfinder:
 
         distances = {}
         for voie in self.graph:
-            distances[voie] = 999999
+            distances[voie] = float("inf")
         distances[depart] = 0
         precedents = {}
         a_visiter = list(self.graph.keys())
@@ -33,6 +33,9 @@ class Pathfinder:
                 if nouvelle_distance < distances[suivante]:
                     distances[suivante] = nouvelle_distance
                     precedents[suivante] = voie
+
+        if distances[arrivee] == float("inf"):
+            raise ValueError("Aucun trajet disponible")
 
         trajet = [arrivee]
         while trajet[-1] != depart:

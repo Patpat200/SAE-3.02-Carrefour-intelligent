@@ -18,6 +18,7 @@ class FakeClient:
         self.state = None
         self.server_error = None
         self.commands = []
+        self.results = []
         self.send_success = True
 
     def start(self):
@@ -36,6 +37,10 @@ class FakeClient:
         error = self.server_error
         self.server_error = None
         return error
+
+    def consume_results(self):
+        results, self.results = self.results, []
+        return results
 
     def send_command(self, action, **params):
         self.commands.append((action, params))
@@ -159,6 +164,24 @@ class InterfaceTests(unittest.TestCase):
         self.assertTrue(self.window.connected)
         self.assertIsNone(self.window.pending_command)
         self.assertEqual(self.window.control_panel.command_status_label.text(), "Demande refusée : Voie inconnue")
+
+    def test_reponse_identifiee_pour_urgence_en_file(self):
+        self.window.trigger_emergency("Nord", "Est", "Pompiers")
+        _, params = self.window.client.commands[-1]
+        self.assertEqual(params["destination"], "Est")
+        self.assertEqual(params["vehicle_type"], "Pompiers")
+        self.window.client.state = {**sample_state(), "confirmation_commandes": True, "urgence": "Nord"}
+        self.window.client.results = [
+            {"request_id": "ancienne", "ok": False, "message": "Ancienne demande"}
+        ]
+        self.window.refresh()
+        self.assertIsNotNone(self.window.pending_command)
+        self.window.client.results = [
+            {"request_id": params["request_id"], "ok": True, "message": "Urgence en attente"}
+        ]
+        self.window.refresh()
+        self.assertIsNone(self.window.pending_command)
+        self.assertIn("Urgence en attente", self.window.control_panel.command_status_label.text())
 
     def test_interface_preferences_are_saved(self):
         self.window.resize(810, 610)

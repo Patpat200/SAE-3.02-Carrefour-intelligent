@@ -1,8 +1,10 @@
 import random
+from itertools import count
 
 
 class Vehicule:
 
+    NUMEROS = count(1)
     LONGUEUR = 30
     LARGEUR = 20
     DEPART = -180
@@ -21,28 +23,32 @@ class Vehicule:
     VOIE_A_GAUCHE = {"Nord": "Ouest", "Sud": "Est", "Ouest": "Sud", "Est": "Nord"}
     VOIE_EN_FACE = {"Nord": "Sud", "Sud": "Nord", "Ouest": "Est", "Est": "Ouest"}
 
-    def __init__(self, voie, urgence=False):
+    def __init__(self, voie, urgence=False, type_urgence=None):
         self.voie = voie
         self.origine = voie
         self.urgence = urgence
+        self.type_urgence = type_urgence
+        self.ancienne_voie = voie
+        self.ancienne_position = 0
+        self.virage = 0
         self.position = self.DEPART
         self.arrete = False
-        self.identifiant = "voiture-" + str(id(self))
+        prefixe = "urgence-" if urgence else "voiture-"
+        self.identifiant = prefixe + str(next(self.NUMEROS))
 
         if urgence:
             self.vitesse = random.randint(4, 6)
             self.couleur = "red"
             self.direction = "tout_droit"
-            self.identifiant = "urgence-" + str(id(self))
         else:
             self.vitesse = random.randint(2, 4)
             self.couleur = random.choice(self.COULEURS)
             self.direction = random.choice(self.DIRECTIONS)
 
-    def avancer(self, feu, devant=None):
+    def avancer(self, feu, devant=None, passage_libre=True):
         nouvelle_pos = self.position + self.vitesse
 
-        if feu.etat == "ROUGE" or feu.etat == "ORANGE":
+        if not passage_libre or feu.etat in ("ROUGE", "ORANGE"):
             if self.position <= self.LIGNE_ARRET:
                 nouvelle_pos = min(nouvelle_pos, self.LIGNE_ARRET)
 
@@ -69,6 +75,9 @@ class Vehicule:
         return False
 
     def tourner(self):
+        self.ancienne_voie = self.voie
+        self.ancienne_position = self.position
+        self.virage = 8
         if self.direction == "droite":
             self.voie = self.VOIE_A_DROITE[self.voie]
             self.position = self.POINT_GAUCHE
@@ -120,4 +129,9 @@ class Vehicule:
             "longueur": self.LONGUEUR,
             "couleur": self.couleur,
             "urgence": self.urgence,
+            "type_urgence": self.type_urgence,
+            "direction": self.direction,
+            "ancienne_voie": self.ancienne_voie,
+            "ancienne_position": self.ancienne_position,
+            "virage": self.virage / 8,
         }

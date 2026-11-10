@@ -4,8 +4,20 @@
         "hauteur": 620
     },
     "network": {
-        "host": "10.128.238.241",
+        "host": "127.0.0.1",
         "port": 5000,
         "reconnect_delay_s": 2
+    },
+    "serveur": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "tick_ms": 500,
+        "vehicle_tick_ms": 30,
+        "spawn_tick_ms": 1200,
+        "log_path": "logs/events.sqlite3"
+    },
+    "feux": {
+        "duree_vert_s": 5,
+        "duree_orange_s": 2
     }
 }

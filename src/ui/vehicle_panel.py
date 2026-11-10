@@ -53,7 +53,7 @@ class VehiclePanel(QWidget):
             if self.emergency_filter.isChecked() and not vehicle.get("urgence"):
                 continue
             rows.append((identifier, vehicle.get("voie", "—"),
-                         "Urgence" if vehicle.get("urgence") else "Normal"))
+                         (vehicle.get("type_urgence") or "Urgence") if vehicle.get("urgence") else "Normal"))
         self.count_label.setText(str(len(rows)) + " affiché(s) sur " + str(len(self.vehicles)))
         if rows == self.rows:
             self.update_details()
@@ -85,7 +85,7 @@ class VehiclePanel(QWidget):
         identifier = self.selected_id
         vehicle = self.vehicles_by_id.get(identifier)
         if identifier:
-            vehicle_type = "Urgence" if vehicle.get("urgence") else "Normal"
+            vehicle_type = (vehicle.get("type_urgence") or "Urgence") if vehicle.get("urgence") else "Normal"
             self.details_label.setText(
                 "Identifiant : " + identifier + "\n"
                 "Voie : " + str(vehicle.get("voie", "—")) + "\n"

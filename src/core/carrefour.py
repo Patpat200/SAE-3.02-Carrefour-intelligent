@@ -1,4 +1,7 @@
+from collections import deque
+
 from .feu import Feu
+from .pathfinder import Pathfinder
 from .vehicle import Vehicule
 
 
@@ -8,6 +11,8 @@ def position_vehicule(vehicule):
 
 class Carrefour:
     VOIES = ("Nord", "Sud", "Est", "Ouest")
+    TYPES_URGENCE = ("Secours", "Pompiers", "Police", "SAMU")
+    MAX_URGENCES_EN_ATTENTE = 20
 
     def __init__(self, feux_settings=None):
         if feux_settings is None:
@@ -31,7 +36,12 @@ class Carrefour:
         self.vehicules = []
         self.phase = "NS"
         self.phase_compteur = 0
+        self.phase_duree_vert = duree_vert
+        self.strategie = "fixe"
         self.urgence_voie = None
+        self.vehicule_prioritaire = None
+        self.trajet_urgence = None
+        self.urgences_en_attente = deque()
 
     def trouver_feu(self, voie):
         for feu in self.feux:
@@ -44,16 +54,30 @@ class Carrefour:
             return
 
         self.phase_compteur += 1
-        duree = self.feu_nord.duree_vert + self.feu_nord.duree_orange
+        duree = self.phase_duree_vert + self.feu_nord.duree_orange
         # on attend que le carrefour soit vide avant de changer de phase
-        if self.phase_compteur >= duree and self.carrefour_libre(None):
+        if self.phase_compteur >= duree and self.carrefour_libre():
             if self.phase == "NS":
                 self.phase = "EW"
             else:
                 self.phase = "NS"
             self.phase_compteur = 0
+            self.phase_duree_vert = self.calculer_duree_vert()
 
         self.regler_phase()
+
+    def calculer_duree_vert(self):
+        duree_normale = self.feu_nord.duree_vert
+        if self.strategie == "fixe":
+            return duree_normale
+        file_ns = self.compter_vehicules("Nord") + self.compter_vehicules("Sud")
+        file_eo = self.compter_vehicules("Est") + self.compter_vehicules("Ouest")
+        file_verte, file_rouge = (file_ns, file_eo) if self.phase == "NS" else (file_eo, file_ns)
+        if file_verte == 0 and file_rouge > 0:
+            return max(1, duree_normale // 2)
+        if file_verte > file_rouge:
+            return min(2 * duree_normale, duree_normale + file_verte)
+        return duree_normale
 
     def regler_phase(self):
         if self.phase == "NS":
@@ -61,7 +85,7 @@ class Carrefour:
         else:
             voies_vertes = ("Est", "Ouest")
 
-        duree_vert = self.feu_nord.duree_vert
+        duree_vert = self.phase_duree_vert
         duree_orange = self.feu_nord.duree_orange
         compteur = self.phase_compteur
 
@@ -79,62 +103,104 @@ class Carrefour:
                 feu.etat = "ROUGE"
                 feu.compteur = 0
 
-    def carrefour_libre(self, voie_autorisee):
-        for v in self.vehicules:
-            if v.dans_carrefour() and v.origine != voie_autorisee:
-                return False
-        return True
+    def carrefour_libre(self):
+        return not any(v.dans_carrefour() for v in self.vehicules)
 
-    def declencher_urgence(self, voie_urgente):
-        self.urgence_voie = voie_urgente
+    def calculer_trajet(self, depart, sortie):
+        # Les liaisons en amont sont fictives. Passer par une autre entrée
+        # coûte plus cher, mais peut éviter une file de voitures.
+        arrivee = "Sortie " + sortie
+        graphe = {"Départ": {}, arrivee: {}}
+        for entree in self.VOIES:
+            if entree == sortie:
+                continue  # pas de demi-tour dans le carrefour
+            noeud = "Entrée " + entree
+            graphe["Départ"][noeud] = 2 if entree == depart else 8
+            cout_traversee = 2 if Vehicule.VOIE_EN_FACE[entree] == sortie else 3
+            graphe[noeud] = {arrivee: cout_traversee + 2 * self.compter_vehicules(entree)}
+        trajet = Pathfinder(graphe).trouver_trajet("Départ", arrivee)
+        return trajet[1].split(" ", 1)[1]
+
+    def declencher_urgence(self, voie, sortie=None, type_urgence="Secours"):
+        if voie not in self.VOIES or (sortie is not None and sortie not in self.VOIES):
+            raise ValueError("Voie ou sortie inconnue")
+        if type_urgence not in self.TYPES_URGENCE:
+            raise ValueError("Type de véhicule inconnu")
+
+        demande = (voie, sortie, type_urgence)
+        if self.vehicule_prioritaire is not None:
+            if len(self.urgences_en_attente) >= self.MAX_URGENCES_EN_ATTENTE:
+                raise ValueError("La file des urgences est pleine")
+            self.urgences_en_attente.append(demande)
+            return "Urgence ajoutée à la file d’attente"
+        self.activer_urgence(*demande)
+        return "Urgence prise en charge"
+
+    def activer_urgence(self, depart, sortie, type_urgence):
+        voie = depart
+        if sortie is None:
+            sortie = Vehicule.VOIE_EN_FACE[voie]
+        else:
+            voie = self.calculer_trajet(depart, sortie)
+        self.urgence_voie = voie
+        self.trajet_urgence = {
+            "depart": depart, "entree": voie, "sortie": sortie, "type": type_urgence
+        }
 
         for feu in self.feux:
-            if feu.nom != voie_urgente or feu.etat != "PRIORITAIRE":
-                feu.etat = "ROUGE"
-                feu.compteur = 0
+            feu.etat = "ROUGE"
+            feu.compteur = 0
 
-        anciens = self.vehicules
-        self.vehicules = []
-        for v in anciens:
-            if not v.urgence:
-                self.vehicules.append(v)
+        urgence = Vehicule(voie, urgence=True, type_urgence=type_urgence)
+        # Les constantes de virage décrivent le sens de circulation en sortie.
+        sens_sortie = Vehicule.VOIE_EN_FACE[sortie]
+        if sens_sortie == Vehicule.VOIE_A_DROITE[voie]:
+            urgence.direction = "droite"
+        elif sens_sortie == Vehicule.VOIE_A_GAUCHE[voie]:
+            urgence.direction = "gauche"
 
-        urgence = Vehicule(voie_urgente, urgence=True)
         for v in self.vehicules:
-            if v.voie == voie_urgente:
+            if v.voie == voie:
                 derriere = v.position - Vehicule.LONGUEUR - Vehicule.ECART_MIN
-                if derriere < urgence.position:
-                    urgence.position = derriere
+                urgence.position = min(urgence.position, derriere)
         self.vehicules.append(urgence)
-
+        self.vehicule_prioritaire = urgence
         self.gerer_urgence()
 
     def gerer_urgence(self):
-        urgence_presente = False
-        for v in self.vehicules:
-            if v.urgence:
-                urgence_presente = True
-
-        if not urgence_presente:
-            self.fin_urgence()
+        if self.vehicule_prioritaire.est_sortie():
+            self.terminer_urgence()
             return
 
         feu = self.trouver_feu(self.urgence_voie)
-        if feu.etat != "PRIORITAIRE" and self.carrefour_libre(self.urgence_voie):
+        if feu.etat != "PRIORITAIRE" and self.carrefour_libre():
             feu.activer_prioritaire()
 
     def fin_urgence(self):
-        if self.urgence_voie is None:
-            return
-        # le cycle reprend à l'orange sur l'axe de l'urgence
-        if self.urgence_voie == "Nord" or self.urgence_voie == "Sud":
-            self.phase = "NS"
-        else:
-            self.phase = "EW"
-        self.phase_compteur = self.feu_nord.duree_vert
+        urgence = self.vehicule_prioritaire
+        if urgence is None:
+            return "Aucune urgence active"
+        if urgence.position > Vehicule.LIGNE_ARRET:
+            return "Véhicule déjà engagé, la priorité se termine après son passage"
+
+        self.vehicules.remove(urgence)
+        self.terminer_urgence()
+        return "Urgence annulée"
+
+    def terminer_urgence(self):
+        voie = self.urgence_voie
         self.urgence_voie = None
-        for feu in self.feux:
-            feu.desactiver_prioritaire()
+        self.vehicule_prioritaire = None
+        self.trajet_urgence = None
+
+        if self.urgences_en_attente:
+            self.activer_urgence(*self.urgences_en_attente.popleft())
+            return
+
+        # Repartir de l’orange sur l’axe qui vient d’avoir la priorité.
+        self.phase = "NS" if voie in ("Nord", "Sud") else "EW"
+        self.phase_duree_vert = self.feu_nord.duree_vert
+        self.phase_compteur = self.phase_duree_vert
         self.regler_phase()
 
     def ajouter_vehicule(self, voie):
@@ -144,69 +210,29 @@ class Carrefour:
         self.vehicules.append(Vehicule(voie))
         return True
 
-    def peut_tourner(self, vehicule):
-        if vehicule.direction == "droite":
-            nouvelle_voie = Vehicule.VOIE_A_DROITE[vehicule.voie]
-            nouvelle_pos = Vehicule.POINT_GAUCHE
-        else:
-            nouvelle_voie = Vehicule.VOIE_A_GAUCHE[vehicule.voie]
-            nouvelle_pos = Vehicule.POINT_DROITE
-        en_face = Vehicule.VOIE_EN_FACE[vehicule.voie]
-        feu_en_face = self.trouver_feu(en_face)
-        place = Vehicule.LONGUEUR + Vehicule.ECART_MIN
-
-        for autre in self.vehicules:
-            if autre is vehicule:
-                continue
-            if autre.voie == nouvelle_voie:
-                if abs(autre.position - nouvelle_pos) < place:
-                    return False
-            # pour tourner à gauche on laisse passer ceux d'en face
-            if vehicule.direction == "gauche" and autre.voie == en_face:
-                if not autre.arrete and autre.position < 20:
-                    if autre.position > Vehicule.LIGNE_ARRET:
-                        return False
-                    if feu_en_face.etat == "VERT" or feu_en_face.etat == "PRIORITAIRE":
-                        return False
-        return True
-
-    def est_bloque(self, vehicule):
-        # bloqué par la voiture de devant qui vient de tourner
-        for autre in self.vehicules:
-            if autre.voie != vehicule.voie and autre.origine == vehicule.origine:
-                if vehicule.touche(autre):
-                    return True
-        return False
-
     def avancer_vehicules(self):
+        # Un seul véhicule peut occuper la zone du croisement. Les feux
+        # gardent leur cycle, mais les autres véhicules attendent à la ligne.
+        carrefour_libre = self.carrefour_libre()
         for feu in self.feux:
-            voitures = []
-            for v in self.vehicules:
-                if v.voie == feu.nom:
-                    voitures.append(v)
+            voitures = [v for v in self.vehicules if v.voie == feu.nom]
             voitures.sort(key=position_vehicule, reverse=True)
 
             devant = None
             for v in voitures:
-                ancienne_pos = v.position
-                deja_bloque = self.est_bloque(v)
-                v.avancer(feu, devant)
-                if not deja_bloque and self.est_bloque(v):
-                    v.position = ancienne_pos
-                    v.arrete = True
+                if v.virage:
+                    v.virage -= 1
+                v.avancer(feu, devant, passage_libre=carrefour_libre)
+                if v.dans_carrefour():
+                    carrefour_libre = False
                 devant = v
 
         for v in self.vehicules:
-            if v.au_point_de_virage() and self.peut_tourner(v):
+            if v.au_point_de_virage():
                 v.tourner()
 
-        restants = []
-        for v in self.vehicules:
-            if not v.est_sortie():
-                restants.append(v)
-        self.vehicules = restants
-
-        if self.urgence_voie is not None:
+        self.vehicules = [v for v in self.vehicules if not v.est_sortie()]
+        if self.vehicule_prioritaire is not None:
             self.gerer_urgence()
 
     def get_state(self):
@@ -227,11 +253,14 @@ class Carrefour:
             "vehicules": vehicules,
             "densite": densite,
             "urgence": self.urgence_voie,
+            "strategie": self.strategie,
+            "trajet_urgence": self.trajet_urgence,
+            "urgences_en_attente": len(self.urgences_en_attente),
         }
 
     def compter_vehicules(self, voie):
         nombre = 0
         for vehicule in self.vehicules:
-            if vehicule.voie == voie:
+            if vehicule.voie == voie and vehicule.position <= Vehicule.LIGNE_ARRET:
                 nombre += 1
         return nombre

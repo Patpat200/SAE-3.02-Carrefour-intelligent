@@ -1,5 +1,8 @@
 from PyQt6.QtCore import QTimer, pyqtSignal
 from datetime import datetime
+from uuid import uuid4
+
+from src.core.vehicle import Vehicule
 import time
 from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QMainWindow, QMessageBox, QScrollArea, QWidget
 
@@ -76,7 +79,8 @@ class MainWindow(QMainWindow):
         self.network_timer.start(50)
 
     def envoyer_commande(self, action, params):
-        if not self.client.send_command(action, **params):
+        request_id = uuid4().hex
+        if not self.client.send_command(action, request_id=request_id, **params):
             self.set_connection(False, self.client.last_error or "Commande non envoyée")
             self.control_panel.command_status_label.setText("Demande non envoyée")
             self.pending_command = None
@@ -86,7 +90,7 @@ class MainWindow(QMainWindow):
                   "set_strategy": "stratégie " + str(params.get("value", ""))}
         label = labels.get(action, action)
         self.pending_command = {"action": action, "params": params, "label": label,
-                                "time": time.monotonic()}
+                                "time": time.monotonic(), "id": request_id}
         self.control_panel.command_status_label.setText("Envoyée : " + label + " — en attente des données du serveur")
 
     def refresh(self):
@@ -98,6 +102,8 @@ class MainWindow(QMainWindow):
         state = self.client.consume_latest_state()
         if state is not None:
             self.afficher_etat(state)
+        for result in self.client.consume_results():
+            self.show_command_result(result)
         server_error = self.client.consume_latest_server_error()
         if server_error:
             self.control_panel.add_event("Erreur serveur : " + server_error)
@@ -111,7 +117,7 @@ class MainWindow(QMainWindow):
         self.update_data_status()
 
     def check_pending_command(self, state):
-        if self.pending_command is None:
+        if self.pending_command is None or state.get("confirmation_commandes"):
             return
         action = self.pending_command["action"]
         params = self.pending_command["params"]
@@ -128,6 +134,14 @@ class MainWindow(QMainWindow):
             texte = "État observé : " + self.pending_command["label"]
             self.control_panel.command_status_label.setText(texte)
             self.control_panel.add_event(texte)
+            self.pending_command = None
+
+    def show_command_result(self, result):
+        prefixe = "Serveur : " if result.get("ok") else "Demande refusée : "
+        texte = prefixe + str(result.get("message", "Réponse reçue"))
+        self.control_panel.add_event(texte)
+        if self.pending_command and result.get("request_id") == self.pending_command["id"]:
+            self.control_panel.command_status_label.setText(texte)
             self.pending_command = None
 
     def cancel_pending_command(self, reason):
@@ -230,7 +244,9 @@ class MainWindow(QMainWindow):
         self.vehicle_panel.set_vehicles(state.get("vehicules", []))
         self.control_panel.set_density(state.get("densite", {}))
         self.control_panel.set_feux(state.get("feux", []))
-        self.control_panel.set_emergency(state.get("urgence"))
+        self.control_panel.set_emergency(
+            state.get("urgence"), state.get("trajet_urgence"), state.get("urgences_en_attente", 0)
+        )
         self.control_panel.set_trafic(state.get("trafic", {}))
         self.control_panel.set_strategie(state.get("strategie"))
         self.control_panel.last_update_label.setText("Dernières données : " + datetime.now().strftime("%H:%M:%S"))
@@ -261,10 +277,15 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage(error_message or "Serveur non connecté - affichage non actualisé")
 
-    def trigger_emergency(self, road):
+    def trigger_emergency(self, road, destination=None, vehicle_type="Secours"):
         if self.connected:
             self.control_panel.add_event("Demande d'urgence : " + road)
-            self.command_requested.emit("trigger_emergency", {"road": road})
+            params = {
+                "road": road,
+                "destination": destination or Vehicule.VOIE_EN_FACE[road],
+                "vehicle_type": vehicle_type,
+            }
+            self.command_requested.emit("trigger_emergency", params)
 
     def clear_emergency(self):
         if self.connected:

@@ -1,49 +1,35 @@
-"""Point d'entree du serveur de simulation du carrefour.
+"""Lancement du serveur avec python server_main.py."""
 
-Usage :
-    python server_main.py
-"""
-
-import os
-import sys
+import sqlite3
 import time
 
-# Force Python a chercher les dossiers (network, core, utils) a cote de ce fichier
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from src.network.server import SimulationServer
-
-HOST = "0.0.0.0"   # ecoute sur toutes les interfaces
-PORT = 5000
-
-# Durees des feux en secondes (converties en ticks par SimulationServer)
-FEUX_SETTINGS = {
-    "duree_vert_s": 5,
-    "duree_orange_s": 2,
-    "duree_rouge_s": 5,
-}
+from src.utils.config_loader import load_settings
 
 
 def main():
-    server = SimulationServer(
-        HOST,
-        PORT,
-        tick_ms=500,
-        vehicle_tick_ms=30,
-        spawn_tick_ms=1200,
-        feux_settings=FEUX_SETTINGS,
-        log_path="logs/events.sqlite3",
-    )
-    server.start()   # lance les threads d'ecoute et de simulation, puis rend la main
-
-    print("Serveur demarre. Ctrl+C pour arreter.")
     try:
-        # SimulationServer utilise des threads daemon : le programme
-        # principal doit rester en vie, sinon tout s'arrete.
+        settings = load_settings(use_local=False)
+        options = settings.get("serveur", {})
+        server = SimulationServer(
+            options.get("host", "0.0.0.0"),
+            options.get("port", 5000),
+            tick_ms=options.get("tick_ms", 500),
+            vehicle_tick_ms=options.get("vehicle_tick_ms", 30),
+            spawn_tick_ms=options.get("spawn_tick_ms", 1200),
+            feux_settings=settings.get("feux"),
+            log_path=options.get("log_path", "logs/events.sqlite3"),
+        )
+        server.start()
+    except (OSError, ValueError, OverflowError, sqlite3.Error) as erreur:
+        raise SystemExit(f"Démarrage du serveur impossible : {erreur}") from erreur
+
+    print("Serveur démarré. Ctrl+C pour arrêter.")
+    try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Arret du serveur...")
+        print("Arrêt du serveur.")
     finally:
         server.stop()
 

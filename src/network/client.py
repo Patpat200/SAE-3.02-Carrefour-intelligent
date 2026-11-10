@@ -1,5 +1,6 @@
 import socket
 import threading
+from collections import deque
 
 from .protocol import decode_messages, encode_message
 
@@ -17,6 +18,7 @@ class NetworkClient:
 
         self.latest_state = None
         self.latest_server_error = None
+        self.results = deque(maxlen=100)
         self.lock = threading.Lock()
         self.thread = None
         self.stop_event = threading.Event()
@@ -36,7 +38,8 @@ class NetworkClient:
         if self.thread is not None and self.thread.is_alive():
             self.thread.join(timeout=1)
 
-    def send_command(self, action, road=None, value=None):
+    def send_command(self, action, road=None, value=None, destination=None,
+                     vehicle_type=None, request_id=None):
         sock = self.socket
         if not self.connected or sock is None:
             return False
@@ -46,6 +49,12 @@ class NetworkClient:
             message["road"] = road
         if value is not None:
             message["value"] = value
+        if destination is not None:
+            message["destination"] = destination
+        if vehicle_type is not None:
+            message["vehicle_type"] = vehicle_type
+        if request_id is not None:
+            message["request_id"] = request_id
 
         try:
             sock.sendall(encode_message(message))
@@ -66,6 +75,12 @@ class NetworkClient:
             error = self.latest_server_error
             self.latest_server_error = None
         return error
+
+    def consume_results(self):
+        with self.lock:
+            results = list(self.results)
+            self.results.clear()
+        return results
 
     def run(self):
         while self.running:
@@ -123,6 +138,9 @@ class NetworkClient:
                         raise ValueError("État invalide")
                     with self.lock:
                         self.latest_state = state
+                elif message.get("type") == "result":
+                    with self.lock:
+                        self.results.append(message)
                 elif message.get("type") == "error":
                     error = message.get("message", "Erreur serveur")
                     with self.lock:

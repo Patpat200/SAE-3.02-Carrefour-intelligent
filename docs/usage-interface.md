@@ -6,7 +6,7 @@ Lancer `main.py` dans l'environnement Python du projet.
 
 Ouvrir l'onglet **Réseau**, renseigner l'adresse du PC serveur et son port,
 puis cliquer sur **Se connecter / Réessayer**. Les paramètres sont enregistrés
-dans `config/settings.json`. Une nouvelle tentative remet l'affichage des
+dans `config/local_settings.json`. Une nouvelle tentative remet l'affichage des
 véhicules à zéro en attendant les données du serveur sélectionné.
 
 Le client retente automatiquement une connexion perdue. **Se déconnecter**
@@ -18,19 +18,13 @@ plus actualisé. Les voitures affichées restent celles du dernier état reçu.
 
 ## Suivi et commandes
 
-Le tableau de suivi présente les nombres de véhicules et les états des feux
-transmis par le serveur. Les demandes d'urgence sont dans l'onglet **Actions**.
-Les réglages d'heure de pointe et de stratégie restent désactivés lorsque le
-serveur n'en fournit pas les données.
+Le tableau de suivi présente les véhicules en approche et les états des feux. Dans **Actions**, choisir le type de véhicule et une sortie, puis cliquer sur le bouton correspondant à son point de départ. « En face » choisit la sortie opposée au départ. Le serveur peut choisir une autre entrée selon le trafic.
 
-L'interface ne calcule pas les déplacements, les priorités ou les cycles des feux.
+L’onglet **Suivi** indique le trajet actif et le nombre de demandes en attente. **Annuler l’urgence active** retire le véhicule s’il n’est pas encore engagé. Sinon, il finit son passage. Les demandes en attente sont traitées dans leur ordre d’arrivée.
 
-Une commande passe d'abord à « Envoyée ». Si les données suivantes correspondent
-à la demande, le message devient « État observé ». Cela constate l'état du
-serveur et ne constitue pas un accusé de réception identifié par commande.
-Après cinq secondes sans état correspondant, un avertissement apparaît.
-Une réponse tardive peut encore être observée. Une nouvelle demande remplace
-la précédente dans cet indicateur. Une déconnexion annule le suivi en attente.
+La fenêtre affiche d’abord « Envoyée », puis le résultat transmis par le serveur. Après cinq secondes sans réponse, un avertissement apparaît. Une réponse tardive peut encore arriver. Le journal garde les réponses reçues et le panneau suit la dernière demande.
+
+Les boutons de trafic permettent d’activer l’heure de pointe et de changer de stratégie de feux. La nouvelle durée de vert s’applique à la prochaine phase normale.
 
 ## Véhicules
 

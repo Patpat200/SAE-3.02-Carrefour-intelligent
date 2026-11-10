@@ -1,47 +1,14 @@
-# Guide d'installation
+# Installation de la maquette
 
-## Prérequis système
-- Python 3.11 ou supérieur
-- pip (inclus avec Python)
-- Git
+Cloner le dépôt et se placer dans son dossier.
 
-## Étapes
-
-### 1. Cloner le dépôt
 ```bash
-git clone https://github.com/<votre-repo>/carrefour-connecte.git
-cd carrefour-connecte
+git clone https://github.com/Patpat200/SAE-3.02-Carrefour-intelligent.git
+cd SAE-3.02-Carrefour-intelligent
 ```
 
-### 2. Créer l'environnement virtuel
-```bash
-python -m venv venv
-```
+[Créer l’environnement virtuel et démarrer les deux programmes](../README.md#installer-et-lancer).
 
-### 3. Activer l'environnement virtuel
-**Windows :**
-```bash
-venv\Scripts\activate
-```
-**Linux / macOS :**
-```bash
-source venv/bin/activate
-```
+Le serveur utilise Python standard et SQLite. Le client a aussi besoin de PyQt6, installé à partir de `requirements.txt`. Le serveur se lance avec `python server_main.py` et le client avec `python main.py`, depuis la racine du dépôt.
 
-### 4. Installer les dépendances
-```bash
-pip install -r requirements.txt
-```
-
-### 5. Lancer le serveur puis le client
-```bash
-python server.py
-```
-
-Dans un second terminal :
-```bash
-python main.py
-```
-
-Docker n'est pas nécessaire pour cette version. Le dossier `logs` est créé
-automatiquement par le serveur.
+Pour un essai sur un seul PC, saisir `127.0.0.1` et `5000` dans l’onglet **Réseau**. Sur deux machines, utiliser [le guide de connexion](connexion.md).
