@@ -103,7 +103,7 @@ docker compose version
 **Debian 13**
 
 ```bash
-sudo apt update
+sudo apt update && upgrade
 sudo apt install docker.io docker-compose
 ```
 
