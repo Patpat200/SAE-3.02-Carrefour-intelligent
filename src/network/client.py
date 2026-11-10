@@ -16,6 +16,7 @@ class NetworkClient:
         self.last_error = ""
 
         self.latest_state = None
+        self.latest_server_error = None
         self.lock = threading.Lock()
         self.thread = None
         self.stop_event = threading.Event()
@@ -59,6 +60,12 @@ class NetworkClient:
             state = self.latest_state
             self.latest_state = None
         return state
+
+    def consume_latest_server_error(self):
+        with self.lock:
+            error = self.latest_server_error
+            self.latest_server_error = None
+        return error
 
     def run(self):
         while self.running:
@@ -117,7 +124,9 @@ class NetworkClient:
                     with self.lock:
                         self.latest_state = state
                 elif message.get("type") == "error":
-                    self.last_error = message.get("message", "Erreur serveur")
+                    error = message.get("message", "Erreur serveur")
+                    with self.lock:
+                        self.latest_server_error = str(error)
 
     def close_socket(self):
         self.connected = False
