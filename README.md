@@ -15,16 +15,16 @@ Il faut Python 3.11 ou supérieur. Depuis la racine du dépôt, créez un enviro
 py -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-server_main.py
+python server_main.py
 ```
 
 **Linux**
 
 ```bash
 python3 -m venv .venv
-./.venv/bin/python
+source .venv/bin/python
 pip install -r requirements.txt
-server_main.py
+python server_main.py
 ```
 
 Dans un deuxième terminal :
