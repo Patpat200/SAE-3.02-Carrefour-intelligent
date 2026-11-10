@@ -22,7 +22,7 @@ python server_main.py
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/python
+source .venv/bin/activate
 pip install -r requirements.txt
 python server_main.py
 ```
