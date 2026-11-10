@@ -63,19 +63,18 @@ Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 .\.venv\Scripts\python.exe main.py
 ```
 
-**Debian ou Ubuntu**
+**Debian**
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-.venv/bin/python server_main.py
+python server_main.py
 ```
 
 Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 
 ```bash
-.venv/bin/python main.py
+python main.py
 ```
 
 Sur le même PC, utilisez **127.0.0.1** et le **port 5000** dans l’onglet **Réseau**. Sur deux PC, le client utilise l’adresse IPv4 du PC serveur. Gardez le serveur ouvert pendant la simulation. [Connexion sur deux PC](docs/connexion.md)
