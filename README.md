@@ -1,30 +1,125 @@
-# Carrefour intelligent
+# Carrefour Connecté - Simulation de véhicules prioritaires
 
-**SAÉ A3.09 / A3.02 BUT Réseaux et Télécommunications, IUT de Colmar**
-Adil EL BOUMAKHLOUFI et Hussain AL SHAQSI
+**SAE A3.09 (Développement Python) / SAE A3.02 (Gestion de projet & cahier des charges)**
+**BUT R&T DevCloud - IUT de Colmar**
+Binôme : Hussain AL SHAQSI & Adil EL BOUMAKHLOUFI
 
-La maquette représente le croisement de l’avenue d’Alsace et de la route de Neuf-Brisach à Colmar. Elle montre comment des feux peuvent donner la priorité aux véhicules de secours.
+---
 
-## Installer et lancer
+## Objectif
 
-### 1. Installer Python, pip et Git
+Aujourd'hui, un véhicule prioritaire (pompiers, police, SAMU) traverse un carrefour à la sirène, à la discrétion des autres automobilistes — un processus risqué et imprévisible qui peut coûter des vies.
 
-Le projet demande **Python 3.11 ou plus récent**. `pip` sert à installer les bibliothèques du projet, dont PyQt6. Git sert à récupérer le code depuis GitHub.
+Ce projet développe une **simulation en Python d'un carrefour connecté** capable de :
 
-**Windows avec PowerShell**
+- **Recevoir** le signal d'urgence émis par un véhicule prioritaire
+- **Calculer** dynamiquement son trajet optimal vers/à travers le carrefour
+- **Basculer** automatiquement les feux concernés en mode « passage prioritaire »
+- **Visualiser** graphiquement la simulation en temps réel (maquette)
+- **Analyser** et afficher la densité du trafic aux intersections
+- **Identifier** les véhicules d'urgence
 
-Installez le [gestionnaire d’installation Python](https://www.python.org/downloads/windows/) et [Git pour Windows](https://git-scm.com/install/windows). Ouvrez ensuite un nouveau terminal PowerShell. Si Python 3.15 est déjà installé, passez directement aux commandes de vérification.
+Détail complet de la problématique, du périmètre fonctionnel (méthode MoSCoW) et du planning : voir le **cahier des charges** (`docs/reponse.md`).
 
-```bash
-pymanager install 3.15
-py -3.15 --version
-py -3.15 -m pip --version
-git --version
+---
+
+## Fonctionnalités (périmètre MoSCoW)
+
+| Fonctionnalité | Priorité |
+|---|---|
+| Réception et décodage du signal d'urgence | **Must have** |
+| Calcul du trajet optimal vers le carrefour | **Must have** |
+| Basculement automatique des feux en mode prioritaire | **Must have** |
+| Simulation graphique du carrefour en temps réel (maquette) | **Must have** |
+| Affichage de la densité de trafic aux intersections | Should have |
+| Identification des véhicules d'urgence | Should have |
+| Gestion de plusieurs véhicules prioritaires simultanés | Should have |
+| Journalisation des événements (logs) | Could have |
+| Interface de configuration (paramètres du carrefour) | Could have |
+| Intégration avec une API cartographique externe | ❌ Won't have |
+
+---
+
+## Architecture
+
+Architecture : **client-serveur**, avec un serveur qui gère l'état du carrefour, la simulation et les décisions de feux, et un client PyQt6 qui affiche l'interface graphique. Communication par **Sockets TCP (JSON ligne par ligne)**, concurrence par **Threads**.
+
+---
+
+## Réseau
+
+Le code réseau est dans `src/network/`.
+
+- **Serveur** (`server.py`) : il fait tourner la simulation et écoute sur `network.host` / `network.port` (par défaut `127.0.0.1:8765`). Il accepte plusieurs clients, avec un thread par client et un thread pour la simulation.
+- **Client** (`client.py`) : il se connecte au serveur dans un thread séparé pour ne pas bloquer l'interface. Si la connexion est perdue, il réessaie tout seul toutes les `network.reconnect_delay_s` secondes.
+- **Protocole** (`protocol.py`) : chaque message est un objet JSON encodé en UTF-8 et terminé par un retour à la ligne.
+
+### Messages envoyés par le serveur
+
+L'état complet du carrefour est envoyé à tous les clients à chaque déplacement des véhicules (toutes les 30 ms par défaut) :
+
+```json
+{"type": "state", "payload": {"feux": [], "vehicules": [], "densite": {}, "urgence": null, "strategie": "fixe", "trafic": {}}}
 ```
 
-Pip est fourni avec Python. Si la commande affiche `No module named pip`, lancez `py -3.15 -m ensurepip --upgrade` et vérifiez à nouveau.
+En cas de commande incorrecte, le serveur répond au client concerné :
 
-**Debian ou Ubuntu**
+```json
+{"type": "error", "message": "Commande inconnue"}
+```
+
+### Commandes envoyées par le client
+
+| Action | Exemple | Effet |
+|---|---|---|
+| `trigger_emergency` | `{"type": "command", "action": "trigger_emergency", "road": "Nord"}` | Déclenche une urgence sur la voie donnée |
+| `clear_emergency` | `{"type": "command", "action": "clear_emergency"}` | Termine l'urgence en cours |
+| `set_rush_hour` | `{"type": "command", "action": "set_rush_hour", "value": true}` | Active ou désactive le mode heure de pointe |
+| `set_strategy` | `{"type": "command", "action": "set_strategy", "value": "adaptatif"}` | Choisit les feux `fixe` ou `adaptatif` |
+
+Pour utiliser deux machines, mettre l'adresse IP du serveur dans `network.host` sur les deux postes (ou `0.0.0.0` côté serveur pour écouter sur toutes les interfaces).
+
+---
+
+## Fonctionnement de la simulation
+
+### Carrefour modélisé
+La maquette représente un carrefour qui existe vraiment à **Colmar** : le croisement de l'**Avenue d'Alsace (D 201)**, du nord au sud, et de la **Route de Neuf-Brisach (D 418)**, d'est en ouest. C'est le carrefour à feux qui mène vers le campus de l'université.
+
+Le dessin reprend le terre-plein central avec des arbres et les bandes cyclables de l'avenue, les passages piétons, et les directions (Mulhouse au sud, Neuf-Brisach et Freiburg à l'est, le centre-ville à l'ouest). C'est une version simplifiée : une seule voie par sens, et les bâtiments autour sont décoratifs. Les noms affichés se changent en haut de `src/ui/carrefour_widget.py`.
+
+### Feux
+Les deux axes (Nord/Sud et Est/Ouest) passent au vert chacun leur tour : vert, orange, puis rouge. L'autre axe ne passe au vert que lorsque le carrefour est vide.
+
+### Véhicules
+- Des voitures apparaissent au hasard sur les quatre voies.
+- Chaque voiture va tout droit, tourne à droite ou tourne à gauche.
+- Pour tourner à gauche, une voiture attend au milieu du carrefour que celles d'en face soient passées.
+- La voiture qui suit attend en retrait pour ne pas bloquer le milieu du carrefour, et une voiture qui tourne à droite ne coupe pas la route à celle qui arrive.
+- Une voiture freine si une autre est en train de croiser sa route.
+- Une voiture qui va tourner met son clignotant, et elle pivote progressivement pendant le virage.
+
+### Véhicule prioritaire
+- Il est rouge avec un contour jaune, une bande blanche et un gyrophare bleu qui clignote.
+- Il se déclenche avec les boutons **Urgence Nord / Sud / Est / Ouest** du panneau de contrôle.
+- Les voitures qui sont juste devant lui sur sa voie serrent à droite pour le laisser passer : avant le carrefour elles s'arrêtent sur le côté, après le carrefour elles continuent en roulant sur le bord. Une voiture déjà engagée dans le carrefour ou en plein virage termine d'abord sa manœuvre. Le véhicule d'urgence se décale vers le milieu pour les doubler, puis elles reprennent leur place.
+- Tous les feux passent tout de suite au rouge, puis la voie du véhicule passe en mode prioritaire (feu bleu) dès que le carrefour est vide.
+- Le cycle normal reprend tout seul quand le véhicule est sorti, ou avec le bouton **Fin urgence**.
+
+### Mode heure de pointe
+Par défaut, le trafic est constant. Le bouton **Activer l'heure de pointe** lance une journée simulée en accéléré (une journée dure 12 minutes par défaut) :
+- le trafic est faible la nuit et monte jusqu'à 2,2 fois la normale vers 8h et 17h ;
+- le matin, 75 % des voitures arrivent par l'Avenue d'Alsace (nord-sud) ; le soir, 75 % arrivent par la Route de Neuf-Brisach (est-ouest).
+
+L'heure simulée et le niveau de trafic sont affichés dans le panneau.
+
+### Deux stratégies de feux
+Le bouton **Feux : fixes / adaptatifs** change de stratégie pendant la simulation :
+- **Feux fixes** : chaque axe a toujours la même durée de vert.
+- **Feux adaptatifs** : le vert s'arrête plus tôt quand plus personne n'arrive sur l'axe au vert et que des voitures attendent sur l'autre, et il est prolongé (jusqu'au double) quand il y a plus de voitures du côté vert que du côté rouge.
+
+### Comparaison des deux stratégies
+Le script `comparer_strategies.py` simule plusieurs journées avec heures de pointe, une fois avec les feux fixes et une fois avec les feux adaptatifs, avec exactement les mêmes voitures. Il affiche un tableau et enregistre le graphique `docs/comparaison_strategies.png`. Il se lance sans le serveur :
 
 ```bash
 sudo apt update
@@ -42,164 +137,160 @@ Dans le terminal, placez-vous dans le dossier où vous voulez ranger le projet. 
 ```bash
 git clone https://github.com/Patpat200/SAE-3.02-Carrefour-intelligent.git
 cd SAE-3.02-Carrefour-intelligent
+python -m venv venv
+source venv/bin/activate      # Linux / WSL2
+venv\Scripts\activate         # Windows (cmd)
+pip install -r requirements.txt
 ```
 
-### 3. Installer les dépendances et lancer la maquette
+### Lancement
 
-L’environnement virtuel `.venv` garde les bibliothèques du projet dans son propre dossier. Les commandes ci-dessous utilisent directement son exécutable Python.
-
-**Windows**
+1) Démarrer le serveur :
 
 ```bash
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-python server_main.py
+python server.py
 ```
 
 Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 
-```bash
+```powershell
 python main.py
 ```
 
-**Debian ou Ubuntu**
+Le serveur doit rester ouvert pendant l'utilisation du client. Le client peut
+être lancé sur une autre machine en remplaçant `network.host` par l'adresse IP
+de la machine qui héberge le serveur. Les événements d'urgence sont enregistrés
+dans `logs/events.sqlite3`. Le serveur s'arrête avec `Ctrl+C`.
+
+---
+
+## Structure du projet
+
+```
+carrefour-connecte/
+├── main.py                      # Point d'entrée du client graphique
+├── comparer_strategies.py       # Compare feux fixes et adaptatifs (graphique)
+├── server.py                    # Point d'entrée du serveur
+├── requirements.txt             # Dépendances Python
+├── Dockerfile                   # Image Docker (bonus)
+├── docker-compose.yml           # Compose pour dev local (bonus)
+├── run.sh                       # Script de lancement rapide (bonus)
+├── README.md                    # Guide + explication du projet
+│
+├── .github/
+│   └── workflows/
+│       └── docker-publish.yml   # CI/CD → build & push sur ghcr.io
+│
+├── config/
+│   └── settings.json            # Paramètres de simulation
+│
+├── src/
+│   ├── core/                    # Logique métier (sans PyQt)
+│   │   ├── carrefour.py         # Feux, urgence et virages
+│   │   ├── feu.py               # Machine à états des feux
+│   │   ├── vehicle.py           # Objet véhicule (déplacement, virage)
+│   │   ├── simulateur.py        # Boucle de simulation
+│   │   ├── trafic.py            # Arrivée des voitures, mode heure de pointe
+│   │   └── pathfinder.py        # Algorithme de trajet optimal
+│   │
+│   ├── network/                 # Communication client-serveur (sockets TCP)
+│   │   ├── server.py            # Serveur de simulation
+│   │   ├── client.py            # Client réseau utilisé par l'interface
+│   │   └── protocol.py          # Encodage / décodage des messages JSON
+│   │
+│   ├── ui/                      # Interface graphique PyQt6
+│   │   ├── main_window.py       # Fenêtre principale
+│   │   ├── carrefour_widget.py  # Dessin du carrefour et des véhicules
+│   │   ├── vehicle_widget.py    # Couleur des véhicules
+│   │   └── control_panel.py     # Panneau de contrôle
+│   │
+│   └── utils/
+│       ├── logger.py            # Logs (SQLite)
+│       └── config_loader.py     # Lecture de settings.json
+├── logs/                        # Créé automatiquement au lancement du serveur
+│
+├── tests/                       # Tests unitaires
+├── docs/
+│   ├── installation.md
+│   ├── usage.md                 # Guide d'utilisation
+│   ├── comparaison_strategies.png  # Graphique produit par comparer_strategies.py
+│   └── reponse.md               # Cahier des charges
+│
+└── assets/icons/
+```
+
+---
+
+## Bonus : lancer avec Docker
+
+Le projet n'exige pas Docker (non demandé par le cahier des charges) — c'est juste pratique pour tester la maquette sans installer Python/PyQt en local. L'image est construite automatiquement sur GitHub à chaque nouvelle version.
+
+### Linux
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python server_main.py
+xhost +local:docker
+
+docker run --rm \
+  -e DISPLAY=$DISPLAY \
+  -e QT_QPA_PLATFORM=xcb \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  --network host \
+  ghcr.io/patpat200/sae-3.02-carrefour-intelligent:latest
+
+xhost -local:docker
 ```
 
-Dans un deuxième terminal, depuis la racine du projet, lancez le client.
+### Windows (WSLg / WSL2)
+
+Ouvrir un terminal **WSL2**, puis la même chose :
 
 ```bash
-python main.py
+xhost +local:docker
+
+docker run --rm \
+  -e DISPLAY=$DISPLAY \
+  -e QT_QPA_PLATFORM=xcb \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  --network host \
+  ghcr.io/patpat200/sae-3.02-carrefour-intelligent:latest
+
+xhost -local:docker
 ```
 
-Sur le même PC, utilisez **127.0.0.1** et le **port 5000** dans l’onglet **Réseau**. Sur deux PC, le client utilise l’adresse IPv4 du PC serveur. Gardez le serveur ouvert pendant la simulation. [Connexion sur deux PC](docs/connexion.md)
+> **WSLg** (Windows 11 / Windows 10 récent) expose automatiquement un serveur X11 — pas besoin d'installer Xming ou VcXsrv.
 
-## Installer et lancer avec Docker
-
-Cette méthode lance le **serveur** dans un conteneur. L’interface PyQt6 se lance sur le PC qui affiche la maquette. Si le serveur et le client tournent sur deux PC, installez Docker uniquement sur le PC serveur.
-
-### 1. Installer Docker
-
-#### Windows avec Docker Desktop
-
-1. Si WSL est absent, ouvrez PowerShell en administrateur et lancez `wsl --install`. Redémarrez Windows si demandé. Pour mettre à jour WSL, lancez `wsl --update`.
-2. Téléchargez [Docker Desktop pour Windows](https://docs.docker.com/desktop/setup/install/windows-install/). Installez-le avec le moteur WSL 2 et ouvrez Docker Desktop.
-3. Une fois le moteur démarré, ouvrez PowerShell et vérifiez l’installation.
-
-```powershell
-docker version
-docker compose version
-```
-
-#### Debian ou Ubuntu avec Docker Engine
-
-Sur une machine sans Docker, ajoutez le dépôt officiel correspondant à votre distribution. Si une ancienne installation de Docker est présente, consultez d’abord le guide de votre distribution. [Guide Debian](https://docs.docker.com/engine/install/debian/) · [Guide Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+### Script tout-en-un (Linux & WSL2)
 
 ```bash
-sudo apt update
-sudo apt install docker.io docker-compose
-sudo systemctl enable --now docker
-sudo docker compose version
+chmod +x run.sh
+./run.sh
 ```
 
-### 2. Récupérer le fichier Compose
-
-Téléchargez `compose.yaml` depuis la racine du dépôt s’il est disponible. Sinon, créez un dossier et enregistrez-y ce contenu dans un fichier nommé exactement `compose.yaml`.
-
-```yaml
-services:
-  carrefour:
-    image: ghcr.io/patpat200/sae-3.02-carrefour-intelligent:latest
-    ports:
-      - "127.0.0.1:5000:5000"
-    volumes:
-      - carrefour-logs:/app/logs
-
-volumes:
-  carrefour-logs:
-```
-
-L’image `latest` doit d’abord être publiée sur GitHub Packages. Un paquet public est téléchargeable sans connexion. Pour un paquet privé, connectez-vous à `ghcr.io` avec un compte autorisé et un jeton GitHub classique doté de la permission `read:packages`. Utilisez `docker login ghcr.io` sous Windows ou `sudo docker login ghcr.io` sous Linux, puis saisissez le jeton quand Docker demande le mot de passe. [Documentation GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
-
-### 3. Démarrer le serveur
-
-Ouvrez un terminal dans le dossier de `compose.yaml`. Docker télécharge l’image au premier lancement. Le volume `carrefour-logs` conserve la base SQLite.
-
-**Windows**
-
-```powershell
-docker compose up -d
-docker compose ps
-```
-
-**Debian ou Ubuntu**
+### Build Docker local
 
 ```bash
-sudo docker compose up -d
-sudo docker compose ps
+docker compose up --build
 ```
 
-Pour consulter les messages du serveur, lancez `docker compose logs carrefour`. Pour arrêter le serveur, lancez `docker compose down`. Sous Linux, ajoutez `sudo` à ces commandes si vous utilisez Docker comme dans les exemples ci-dessus.
-
-### 4. Ouvrir l’interface
-
-Sur le PC qui affiche la maquette, [installez Python, pip et Git](#1-installer-python-pip-et-git), puis [clonez le projet](#2-cloner-le-projet). Ouvrez un terminal à la racine du dépôt cloné.
-
-**Windows avec PowerShell**
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main.py
-```
-
-**Debian ou Ubuntu**
+### Publier une nouvelle version
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python main.py
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-- **Sur le même PC**, renseignez `127.0.0.1` et le port `5000` dans l’onglet **Réseau**.
-- **Sur deux PC**, remplacez `127.0.0.1` dans `compose.yaml` par l’IPv4 locale de la machine Docker, par exemple `192.168.1.20:5000:5000`. Relancez `docker compose up -d`, puis saisissez cette même IPv4 et le port `5000` dans l’interface. Utilisez le réseau local pour ce test. [Publication des ports Docker](https://docs.docker.com/engine/network/port-publishing/)
+GitHub Actions build automatiquement l'image et la pousse sur `ghcr.io`.
 
-## Faire une démonstration
+---
 
-1. Dans **Actions**, choisissez le type de véhicule et la sortie. Le bouton **Urgence Nord**, par exemple, indique le point de départ côté Nord.
-2. Dans **Suivi**, lisez l’entrée retenue et la sortie. Le serveur compare des chemins sur un graphe simplifié. Un détour peut coûter moins cher si beaucoup de véhicules attendent devant l’entrée directe.
-3. Envoyez une deuxième demande avant la fin de la première. Elle entre dans la file d’attente. Le serveur les traite dans leur ordre d’arrivée.
-4. Essayez l’heure de pointe et les feux adaptatifs. Le tableau compte les véhicules en approche. En mode adaptatif, le nombre de véhicules en approche peut raccourcir ou allonger le vert de la prochaine phase.
-5. Dans **Véhicules**, sélectionnez une ligne pour repérer une voiture sur le dessin. Le **Journal** permet de relire et d’exporter les événements affichés.
+## Jalons
 
-La simulation autorise un seul véhicule à traverser le centre à la fois. Le feu bleu représente le passage prioritaire. Les liaisons en amont, les coûts d’itinéraire et les véhicules sont simulés.
+| Date | Livrable |
+|------|----------|
+| 29/09/2026 | Cahier des charges validé |
+| 15/11/2026 | Maquette fonctionnelle - `v0.1.0` |
+| Juin 2027 | Simulation complète - `v1.0.0` |
 
-## Où lire le code
+---
 
-| Fichier ou dossier | Rôle |
-|---|---|
-| `server_main.py` | Charge la configuration et lance le serveur |
-| `main.py` | Lance l’interface PyQt6 |
-| `src/core/` | Modèle du carrefour, véhicules, feux et calcul de trajet |
-| `src/network/` | Échanges TCP avec des messages JSON terminés par un saut de ligne |
-| `src/ui/` | Dessin, suivi et boutons |
-| `config/settings.json` | Réglages partagés du serveur et valeurs initiales du client |
-| `tests/` | Tests du modèle, du réseau et de l’interface |
-
-L’interface enregistre ses préférences dans `config/local_settings.json`, ignoré par Git. Le journal SQLite du serveur se trouve par défaut dans `logs/events.sqlite3`.
-
-## Vérifications et rendu
-
-Lancer `python -m unittest discover -s tests -v` dans l’environnement virtuel. Les essais automatisés du réseau tournent en local. Le guide de test décrit l’essai séparé sur les deux PC du binôme.
-
-- [Cahier des charges d’origine](docs/CahierDesCharges.docx)
-- [Réponse au cahier des charges](docs/reponse.md)
-- [Utilisation de l’interface](docs/usage-interface.md)
-- [Explications du code](docs/explications.md)
-- [Tests](docs/tests.md)
+Développé avec ♡ par le groupe Les étranger du Shawarme 68
