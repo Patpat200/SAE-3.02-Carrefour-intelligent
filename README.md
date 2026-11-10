@@ -27,7 +27,7 @@ Pip est fourni avec Python. Si la commande affiche `No module named pip`, lancez
 **Debian**
 
 ```bash
-sudo apt update
+sudo apt update && apt upgrade
 sudo apt install python3 python3-pip python3-venv git
 
 python3 --version
