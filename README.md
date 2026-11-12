@@ -72,7 +72,7 @@ main.py
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python server_main.py
+python server_main.py # NE SOURTOUT PAS ETRE EN ROOT NI SUDO NI EN SU -
 ```
 
 Dans un deuxième terminal, depuis la racine du projet, lancez le client.
@@ -81,14 +81,20 @@ Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python main.py
+python main.py # NE SOURTOUT PAS ETRE EN ROOT NI SUDO NI EN SU -
 ```
 
-Sur le même PC, utilisez **127.0.0.1** et le **port 5000** dans l’onglet **Réseau**. Sur deux PC, le client utilise l’adresse IPv4 du PC serveur. Gardez le serveur ouvert pendant la simulation. [Connexion sur deux PC](docs/connexion.md)
+Sur la VM cliente, une fois l’interface graphique lancée, ouvrez l’onglet **Réseau** et renseignez l’adresse IP de la VM serveur. Pour connaître cette adresse, exécutez `hostname -I` sur la VM serveur.
 
-## Installer et lancer avec Docker
 
-Cette méthode lance le **serveur** dans un conteneur. L’interface PyQt6 se lance sur le PC qui affiche la maquette. Si le serveur et le client tournent sur deux PC, installez Docker uniquement sur le PC serveur.
+
+
+
+
+
+
+
+
 
 
 
@@ -181,7 +187,7 @@ python main.py
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python main.py
+python main.py # NE SOURTOUT PAS ETRE EN ROOT NI SUDO NI EN SU -
 ```
 
 - **Sur le même PC**, renseignez `127.0.0.1` et le port `5000` dans l’onglet **Réseau**.
