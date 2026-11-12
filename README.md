@@ -51,7 +51,7 @@ L’environnement virtuel `.venv` garde les bibliothèques du projet dans son pr
 **Windows avec PowerShell**
 
 ```powershell
-py -3.15 -m venv .venv
+py -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 python server_main.py
@@ -60,7 +60,10 @@ python server_main.py
 Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 
 ```powershell
-.\.venv\Scripts\python.exe main.py
+py -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+main.py
 ```
 
 **Debian**
@@ -68,12 +71,16 @@ Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt
 python server_main.py
 ```
 
 Dans un deuxième terminal, depuis la racine du projet, lancez le client.
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 python main.py
 ```
 
