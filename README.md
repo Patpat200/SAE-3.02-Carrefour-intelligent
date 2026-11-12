@@ -146,8 +146,6 @@ volumes:
   carrefour-logs:
 ```
 
-L’image `latest` doit d’abord être publiée sur GitHub Packages. Un paquet public est téléchargeable sans connexion. Pour un paquet privé, connectez-vous à `ghcr.io` avec un compte autorisé et un jeton GitHub classique doté de la permission `read:packages`. Utilisez `docker login ghcr.io` sous Windows ou `sudo docker login ghcr.io` sous Linux, puis saisissez le jeton quand Docker demande le mot de passe. [Documentation GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
-
 ### 3. Démarrer le serveur
 
 Ouvrez un terminal dans le dossier de `compose.yaml`. Docker télécharge l’image au premier lancement. Le volume `carrefour-logs` conserve la base SQLite.
@@ -159,7 +157,7 @@ docker compose up -d
 docker compose ps
 ```
 
-**Debian ou Ubuntu**
+**Debian**
 
 ```bash
 sudo docker compose up -d
@@ -167,6 +165,7 @@ sudo docker compose ps
 ```
 
 Pour consulter les messages du serveur, lancez `docker compose logs carrefour`. Pour arrêter le serveur, lancez `docker compose down`. Sous Linux, ajoutez `sudo` à ces commandes si vous utilisez Docker comme dans les exemples ci-dessus.
+
 
 ### 4. Ouvrir l’interface
 
