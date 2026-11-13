@@ -11,6 +11,7 @@ def encode_message(payload):
 
 def decode_messages(buffer):
     messages = []
+    # TCP peut couper un message. On garde le reste pour la prochaine lecture.
     while b"\n" in buffer:
         morceaux = buffer.split(b"\n", 1)
         raw_message = morceaux[0]

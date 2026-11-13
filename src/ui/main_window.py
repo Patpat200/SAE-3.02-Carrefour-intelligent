@@ -99,6 +99,7 @@ class MainWindow(QMainWindow):
             self.update_data_status()
             return
         self.set_connection(self.client.connected, self.client.last_error)
+        # Le timer Qt récupère l’état reçu par le thread réseau pour mettre à jour la fenêtre.
         state = self.client.consume_latest_state()
         if state is not None:
             self.afficher_etat(state)
@@ -140,6 +141,7 @@ class MainWindow(QMainWindow):
         prefixe = "Serveur : " if result.get("ok") else "Demande refusée : "
         texte = prefixe + str(result.get("message", "Réponse reçue"))
         self.control_panel.add_event(texte)
+        # Une réponse tardive peut appartenir à une commande précédente.
         if self.pending_command and result.get("request_id") == self.pending_command["id"]:
             self.control_panel.command_status_label.setText(texte)
             self.pending_command = None

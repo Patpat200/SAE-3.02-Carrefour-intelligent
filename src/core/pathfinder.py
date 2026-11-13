@@ -18,6 +18,7 @@ class Pathfinder:
         precedents = {}
         a_visiter = list(self.graph.keys())
 
+        # Dijkstra explore d’abord la voie dont le coût est le plus faible.
         while len(a_visiter) > 0:
             voie = a_visiter[0]
             for autre in a_visiter:
@@ -37,6 +38,7 @@ class Pathfinder:
         if distances[arrivee] == float("inf"):
             raise ValueError("Aucun trajet disponible")
 
+        # On remonte de l’arrivée vers le départ grâce aux voies précédentes.
         trajet = [arrivee]
         while trajet[-1] != depart:
             trajet.append(precedents[trajet[-1]])

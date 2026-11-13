@@ -117,6 +117,7 @@ class Carrefour:
             noeud = "Entrée " + entree
             graphe["Départ"][noeud] = 2 if entree == depart else 8
             cout_traversee = 2 if Vehicule.VOIE_EN_FACE[entree] == sortie else 3
+            # Chaque véhicule en approche rend cette entrée plus coûteuse.
             graphe[noeud] = {arrivee: cout_traversee + 2 * self.compter_vehicules(entree)}
         trajet = Pathfinder(graphe).trouver_trajet("Départ", arrivee)
         return trajet[1].split(" ", 1)[1]
